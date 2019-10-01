@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29324.140
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClipSharp", "ClipSharp\ClipSharp.csproj", "{45DC4C62-3879-403D-B375-712448212EBA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClipSharpTest", "ClipSharpTest\ClipSharpTest.csproj", "{FA30FB51-87FF-4991-BDCC-7E1BE056C6A6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{45DC4C62-3879-403D-B375-712448212EBA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45DC4C62-3879-403D-B375-712448212EBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45DC4C62-3879-403D-B375-712448212EBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45DC4C62-3879-403D-B375-712448212EBA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA30FB51-87FF-4991-BDCC-7E1BE056C6A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA30FB51-87FF-4991-BDCC-7E1BE056C6A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA30FB51-87FF-4991-BDCC-7E1BE056C6A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA30FB51-87FF-4991-BDCC-7E1BE056C6A6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CFE0A06A-5C9A-4B30-B301-91DB4321B4BD}
+	EndGlobalSection
+EndGlobal
