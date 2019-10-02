@@ -5,6 +5,8 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.InteropServices;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Runtime.CompilerServices;
+using System.IO;
 
 namespace ClipSharp
 {
@@ -23,49 +25,115 @@ namespace ClipSharp
             DataObject = data;
         }
 
+        #region GetCanonicalFormatEtc
+        public virtual FORMATETC GetCanonicalFormatEtc( ref FORMATETC format)
+        {
+            FORMATETC c;
+            var re = DataObject.GetCanonicalFormatEtc(ref format, out c);
+            return c;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FORMATETC GetCanonicalFormatEtc(int format)
+        {
+            var f = DataObjectUtils.GetFormatEtc(format);
+            return GetCanonicalFormatEtc(ref f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FORMATETC GetCanonicalFormatEtc(string format)
+        {
+            var f = DataObjectUtils.GetFormatEtc(format);
+            return GetCanonicalFormatEtc(ref f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual FORMATETC GetCanonicalFormatEtc(FormatId format) => GetCanonicalFormatEtc(format.Id);
+
+        #endregion GetCanonicalFormatEtc
+
+        #region GetDataPresent
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool GetDataPresent(int format)
+        {
+            var f = DataObjectUtils.GetFormatEtc(format);
+            return GetDataPresent(ref f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool GetDataPresent(string format)
+        {
+            var f = DataObjectUtils.GetFormatEtc(format);
+            return GetDataPresent(ref f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool GetDataPresent(FormatId format) => GetDataPresent(format.Id);
+
+        public virtual bool GetDataPresent(ref FORMATETC format)
+            => DataObject.QueryGetData(ref format) == 0;//S_OK
+        #endregion GetDataPresent
+
         public virtual IEnumerable<DataObjectFormat> GetFormats(bool allFormat = false)
         {
-            var enumFormatEtc = DataObject.EnumFormatEtc(DATADIR.DATADIR_GET);
-            if (enumFormatEtc == null) return null;
-            enumFormatEtc.Reset();
-            FORMATETC[] fe = new FORMATETC[1];
-            List<DataObjectFormat> fs = new List<DataObjectFormat>();
-            while(enumFormatEtc.Next(1,fe,null) == 0)
+            IEnumFORMATETC enumFormatEtc = default;
+            try
             {
-                fs.Add(new DataObjectFormat(fe[0]));
+                enumFormatEtc = DataObject.EnumFormatEtc(DATADIR.DATADIR_GET);
+                if (enumFormatEtc == null) return null;
+                enumFormatEtc.Reset();
+                FORMATETC[] fe = new FORMATETC[1];
+                List<DataObjectFormat> fs = new List<DataObjectFormat>();
+                while (enumFormatEtc.Next(1, fe, null) == 0)
+                {
+                    fs.Add(new DataObjectFormat(fe[0]));
+                }
+                return fs;
             }
-            Marshal.ReleaseComObject(enumFormatEtc);
-            return fs;
+            finally
+            {
+                Marshal.ReleaseComObject(enumFormatEtc);
+            }
         }
 
 
         public string GetString(FormatId id,NativeStringType type)
         {
             var f = DataObjectUtils.GetFormatEtc(id);
-            STGMEDIUM s;
-            DataObject.GetData(ref f, out s);
-            var str = s.GetString(type);
-            s.Release();
-            return str;
+            STGMEDIUM s = default;
+            try
+            {
+                DataObject.GetData(ref f, out s);
+                return s.GetString(type);
+            }finally
+            {
+                s.Dispose();
+            }
         }
 
         public string[] GetFileDropList()
         {
-            STGMEDIUM s;
             var f = FormatId.CF_HDROP.FormatEtc;
-            DataObject.GetData(ref f, out s);
-            var fs = s.GetFiles();
-            s.Release();
-            return fs;
+            STGMEDIUM s = default;
+            try
+            {
+                DataObject.GetData(ref f, out s);
+                return s.GetFiles();
+            }
+            finally
+            {
+                s.Dispose();
+            }
         }
 
         public Image GetBitmap()
         {
             var f = FormatId.CF_BITMAP.FormatEtc;
-            STGMEDIUM s;
-            DataObject.GetData(ref f, out s);
+            STGMEDIUM s = default;
             try
             {
+                DataObject.GetData(ref f, out s);
                 if (s.tymed != TYMED.TYMED_GDI) throw new ApplicationException("Invalid Tymed");
                 var bmp = Bitmap.FromHbitmap(s.unionmember);
                 var ret = bmp.Clone() as Bitmap;
@@ -74,7 +142,7 @@ namespace ClipSharp
             }
             finally
             {
-                s.Release();
+                s.Dispose();
             }
         }
 
@@ -129,5 +197,6 @@ namespace ClipSharp
             }
             throw new ArgumentException(nameof(id));
         }
+
     }
 }

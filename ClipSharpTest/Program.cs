@@ -7,6 +7,7 @@ namespace ClipSharpTest
     {
         static void Main(string[] args)
         {
+            Clipboard
             var x = new ComDataObject();
             foreach (var item in x.GetFormats())
             {

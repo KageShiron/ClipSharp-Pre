@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -13,7 +14,7 @@ namespace ClipSharp
         #region P/Invoke
 
         [DllImport("ole32.dll")]
-        static extern void ReleaseStgMedium([In] ref STGMEDIUM pmedium);
+        static extern void ReleaseStgMedium(in STGMEDIUM pmedium);
 
         [DllImport("kernel32.dll")]
         private static extern UIntPtr GlobalSize(IntPtr hMem);
@@ -40,7 +41,7 @@ namespace ClipSharp
         private static extern uint GetMetaFileBitsEx(IntPtr hmf, uint cbBuffer, IntPtr lpbBuffer);
 
         [DllImport("ole32.dll")]
-        static extern int CreateStreamOnHGlobal(IntPtr hGlobal, bool fDeleteOnRelease, out IStream ppstm);
+        static extern HRESULT CreateStreamOnHGlobal(IntPtr hGlobal, bool fDeleteOnRelease, out IStream ppstm);
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         static extern unsafe int DragQueryFile(IntPtr hDrop, int iFile,
@@ -88,23 +89,44 @@ namespace ClipSharp
         /// STGMEDIUMを解放します
         /// </summary>
         /// <param name="stg">解放するSTGMEDIUM</param>
-        public static void Release(this STGMEDIUM stg)
+        public static void Dispose(this in STGMEDIUM stg)
         {
-            ReleaseStgMedium(ref stg);
+            if (stg.tymed == TYMED.TYMED_NULL) return;
+            ReleaseStgMedium(in stg);
+        }
+        public delegate TResult ReadOnlySpanFunc<T,TResult>(ReadOnlySpan<T> span);
+        public static TResult InvokeHGlobal<TSpan, TResult>(this in STGMEDIUM stg, ReadOnlySpanFunc<TSpan, TResult> func)
+        {
+            if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException(nameof(stg));
+            IntPtr locked = GlobalLock(stg.unionmember);
+            try
+            {
+                int size = (int)GlobalSize(locked).ToUInt32();
+                unsafe
+                {
+                    var span = new ReadOnlySpan<TSpan>((void*)locked, size);
+                    return func(span);
+                }
+            }
+            finally
+            {
+                GlobalUnlock(locked);
+            }
         }
 
 
-        private static Span<byte> BeginHGlobal(IntPtr hGlobal)
+
+        public static ReadOnlySpan<byte> BeginHGlobal(IntPtr hGlobal)
         {
             IntPtr locked = GlobalLock(hGlobal);
             int size = (int)GlobalSize(locked).ToUInt32();
             unsafe
             {
-                return new Span<byte>((byte*)locked, size);
+                return new ReadOnlySpan<byte>((byte*)locked, size);
             }
         }
 
-        private static void EndHGlobal<T>(Span<T> hGlobal) where T : unmanaged
+        public static void ReadOnlySpan<T>(Span<T> hGlobal) where T : unmanaged
         {
             unsafe
             {
@@ -114,6 +136,74 @@ namespace ClipSharp
 
                 }
             }
+        }
+
+        /// <summary>
+        /// 拡張メタファイルのデータをコピーしてMemoryStreamを作成します
+        /// </summary>
+        /// <param name="hEnhFile">拡張メタファイルのハンドル</param>
+        /// <returns>作成したStream</returns>
+        private static Stream CreateStreamFromEnhMetaFile(IntPtr hEnhFile)
+        {
+            uint size = GetEnhMetaFileBits(hEnhFile, 0, IntPtr.Zero);
+            byte[] bin = new byte[size];
+            GetEnhMetaFileBits(hEnhFile, size, bin);
+            return new MemoryStream(bin);
+        }
+
+        /// <summary>
+        /// メタファイルのデータをコピーしてMemoryStreamを作成します
+        /// </summary>
+        /// <param name="hMetaFile">メタファイルのハンドル</param>
+        /// <returns>作成したStream</returns>
+        private static Stream CreateStreamFromMetaFile(IntPtr hMetaFile)
+        {
+            uint size = GetMetaFileBitsEx(hMetaFile, 0, IntPtr.Zero);
+            byte[] bin = new byte[size];
+            GetMetaFileBitsEx(hMetaFile, size, bin);
+            return new MemoryStream(bin);
+        }
+
+        /// <summary>
+        /// Unmanagedなメモリ領域を持つStreamを作成します。
+        /// 2回目以降の呼び出し結果は未定義となります。
+        /// </summary>
+        /// <param name="stg">IStreamまたはHGLOBALであるSTGMEDIUM</param>
+        /// <param name="autoRelease">作成したStreamが破棄された場合、stg自体を破棄するかを指定します。
+        /// trueを指定した場合、呼び出し元は作成したStreamのDispose以外の手段でメモリを開放してはいけません。</param>
+        /// <returns></returns>
+        public static Stream GetUnmanagedStream(this STGMEDIUM stg, bool autoRelease)
+        {
+            IStream s;
+            switch (stg.tymed)
+            {
+                case TYMED.TYMED_HGLOBAL:   // create IStream
+                    CreateStreamOnHGlobal(stg.unionmember, false, out s).ThrowIfFailed();
+                    break;
+                case TYMED.TYMED_ISTREAM:   // cast to IStream
+                    s = (IStream)Marshal.GetObjectForIUnknown(stg.unionmember);
+                    break;
+                case TYMED.TYMED_MFPICT:
+                    //return StgMediumExtensions.CreateStreamFromHglobal(stg.unionmember);
+                    return StgMediumExtensions.CreateStreamFromMetaFile(stg.unionmember);
+                case TYMED.TYMED_ENHMF:
+                    return StgMediumExtensions.CreateStreamFromEnhMetaFile(stg.unionmember);
+                default:                    // Error
+                    throw new NotImplementedException(stg.tymed.ToString());
+            }
+            var cs = new ComStream(s, false, true);
+
+            // Release StgMedium
+            if (autoRelease)
+            {
+                cs.Disposed += (sender, __) =>  // when ComStream disposed
+                {
+                    // release created IStream
+                    if ((stg.tymed & TYMED.TYMED_HGLOBAL) != 0) Marshal.ReleaseComObject(s);
+                    stg.Dispose();
+                };
+            }
+            return cs;
         }
 
     }
