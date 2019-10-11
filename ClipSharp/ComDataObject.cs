@@ -8,6 +8,7 @@ using System.Drawing.Imaging;
 using System.Runtime.CompilerServices;
 using System.IO;
 using System.Globalization;
+using static Vanara.PInvoke.Shell32;
 
 namespace ClipSharp
 {
@@ -164,6 +165,35 @@ namespace ClipSharp
 
         public DragDropEffects GetDragDropEffects() => ReadHGlobal<DragDropEffects>(FormatId.CFSTR_PREFERREDDROPEFFECT);
         public CultureInfo GetCultureInfo() => new CultureInfo(ReadHGlobal<int>(FormatId.CF_LOCALE));
+        public List<PIDL> GetPidl()
+        {
+            var f = FormatId.CFSTR_SHELLIDLIST.FormatEtc;
+            STGMEDIUM s = default;
+            try
+            {
+                DataObject.GetData(ref f, out s);
+                
+                return s.InvokeHGlobal<uint, List<PIDL>>(x =>
+                {
+                    var l = new List<PIDL>();
+                    unsafe
+                    {
+                        fixed (void* ptr = x)
+                        {
+                            for (int i = 0; i < x[0] + 1; i++)
+                            {
+                                l.Add(new PIDL((IntPtr)(((byte*)ptr) + x[i+1]), true));
+                            }
+                        }
+                    }
+                   return l;
+                });
+            }
+            finally
+            {
+                s.Dispose();
+            }
+        }
         public FileDescriptor[] GetFileDescriptors()
         {
             var f = FormatId.CFSTR_FILEDESCRIPTORW.FormatEtc;
