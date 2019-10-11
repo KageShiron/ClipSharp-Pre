@@ -3,7 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using STATSTG = System.Runtime.InteropServices.ComTypes.STATSTG;
 
-namespace DataFormatLib
+namespace ClipSharp
 {
     [Guid("0000000c-0000-0000-C000-000000000046")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

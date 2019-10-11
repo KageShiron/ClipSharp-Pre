@@ -114,6 +114,23 @@ namespace ClipSharp
             }
         }
 
+        public static TResult ReadHGlobal<TResult>(this in STGMEDIUM stg)
+        {
+            if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException(nameof(stg));
+            IntPtr locked = GlobalLock(stg.unionmember);
+            try
+            {
+                int size = (int)GlobalSize(locked).ToUInt32();
+                unsafe
+                {
+                    return new ReadOnlySpan<TResult>((void*)locked, size)[0];
+                }
+            }
+            finally
+            {
+                GlobalUnlock(locked);
+            }
+        }
 
 
         public static ReadOnlySpan<byte> BeginHGlobal(IntPtr hGlobal)

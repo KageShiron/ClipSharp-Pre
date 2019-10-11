@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.CompilerServices;
 using System.IO;
+using System.Globalization;
 
 namespace ClipSharp
 {
@@ -97,7 +98,7 @@ namespace ClipSharp
             }
         }
 
-
+        public HtmlFormat GetHtml() => HtmlFormat.Parse(GetString(FormatId.Html));
         public string GetString(FormatId id,NativeStringType type)
         {
             var f = DataObjectUtils.GetFormatEtc(id);
@@ -139,6 +140,38 @@ namespace ClipSharp
                 var ret = bmp.Clone() as Bitmap;
                 bmp.Dispose();
                 return ret;
+            }
+            finally
+            {
+                s.Dispose();
+            }
+        }
+
+        public TResult ReadHGlobal<TResult>( FormatId id ) where TResult:unmanaged
+        {
+            STGMEDIUM s = default;
+            var f = id.FormatEtc;
+            try
+            {
+                DataObject.GetData(ref f, out s);
+                return s.ReadHGlobal<TResult>();
+            }
+            finally
+            {
+                s.Dispose();
+            }
+        }
+
+        public DragDropEffects GetDragDropEffects() => ReadHGlobal<DragDropEffects>(FormatId.CFSTR_PREFERREDDROPEFFECT);
+        public CultureInfo GetCultureInfo() => new CultureInfo(ReadHGlobal<int>(FormatId.CF_LOCALE));
+        public FileDescriptor[] GetFileDescriptors()
+        {
+            var f = FormatId.CFSTR_FILEDESCRIPTORW.FormatEtc;
+            STGMEDIUM s = default;
+            try
+            {
+                DataObject.GetData(ref f, out s);
+                return s.InvokeHGlobal<byte, FileDescriptor[]>( FileDescriptor.FromFileGroupDescriptor );
             }
             finally
             {

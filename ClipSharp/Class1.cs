@@ -12,6 +12,13 @@ namespace ClipSharp
         private FileDescriptor(in FILEDESCRIPTOR fd)
         {
             this._fd = fd;
+            unsafe
+            {
+                fixed (char* ptr = fd.cFileName)
+                {
+                    this.FileName = new string(ptr);
+                }
+            }
         }
 
         public static FileDescriptor[] FromFileGroupDescriptor(ReadOnlySpan<byte> s)
@@ -34,7 +41,7 @@ namespace ClipSharp
         public DateTime? LastAccessTime => FILETIME2DateTime(ValueOrNull(FileDescriptorFlags.FD_ACCESSTIME, _fd.ftLastAccessTime));
         public DateTime? WriteTime => FILETIME2DateTime(ValueOrNull(FileDescriptorFlags.FD_WRITESTIME, _fd.ftLastWriteTime));
         public ulong? FileSize => ValueOrNull(FileDescriptorFlags.FD_FILESIZE, (((ulong)_fd.nFileSizeHigh) << 32 | _fd.nFileSizeLow));
-        public string FileName => _fd.cFileName;
+        public string FileName { get; }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private TResult? ValueOrNull<TResult>(FileDescriptorFlags flag, TResult value) where TResult : struct
@@ -68,7 +75,7 @@ namespace ClipSharp
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-        private struct FILEDESCRIPTOR
+        private unsafe struct FILEDESCRIPTOR
         {
             public FileDescriptorFlags dwFlags;
             public Guid clsid;
@@ -80,8 +87,9 @@ namespace ClipSharp
             public long ftLastWriteTime;
             public UInt32 nFileSizeHigh;
             public UInt32 nFileSizeLow;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
-            public string cFileName;
+            public fixed char cFileName[260];
+            //[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+            //public string cFileName;
         }
         [StructLayout(LayoutKind.Sequential)]
         public struct SIZE

@@ -7,13 +7,13 @@ namespace ClipSharpTest
     {
         static void Main(string[] args)
         {
-            Clipboard
             var x = new ComDataObject();
-            foreach (var item in x.GetFormats())
+
+            foreach (var item in x.GetFileDropList())
             {
                 Console.WriteLine(item);
+
             }
-            Console.WriteLine(x.GetString(FormatId.Html));
         }
     }
 }

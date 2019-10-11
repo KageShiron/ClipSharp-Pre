@@ -5,10 +5,9 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using DataFormatLib;
 using STATSTG = System.Runtime.InteropServices.ComTypes.STATSTG;
 
-namespace DataFormatLib
+namespace ClipSharp
 {
     class ComStream : Stream
     {
