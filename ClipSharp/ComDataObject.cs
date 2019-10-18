@@ -190,19 +190,17 @@ namespace ClipSharp
                 s.Dispose();
             }
         }
-        public FileDescriptor[] GetFileDescriptors()
+        public Stream GetFileContent(int index) => GetUnmanagedStream( FormatId.CFSTR_FILECONTENTS, index);
+
+        public Dictionary<FileDescriptor,Stream> GetFileContents()
         {
-            var f = FormatId.CFSTR_FILEDESCRIPTORW.FormatEtc;
-            STGMEDIUM s = default;
-            try
+            var fd = GetFileDescriptors();
+            Dictionary<FileDescriptor, Stream> s = new Dictionary<FileDescriptor, Stream>(fd.Length);
+            for (int i = 0; i < fd.Length; i++)
             {
-                DataObject.GetData(ref f, out s);
-                return s.InvokeHGlobal<byte, FileDescriptor[]>( FileDescriptor.FromFileGroupDescriptor );
+                s.Add(fd[i], GetFileContent(i));
             }
-            finally
-            {
-                s.Dispose();
-            }
+            return s;
         }
 
         //public Metafile GetMetafile()
@@ -257,25 +255,21 @@ namespace ClipSharp
             throw new ArgumentException(nameof(id));
         }
 
-        public Stream GetUnmanagedStream(FormatId id)
+        public Stream GetUnmanagedStream(FormatId id,int lindex = -1)
         {
             var f = id.FormatEtc;
-            DataObject.GetData(ref f, out STGMEDIUM s);
+            f.lindex = lindex;
+            DataObject.GetData(ref f , out STGMEDIUM s);
             return s.GetUnmanagedStream(true);
         }
 
-        public IEnumerable<FileDescriptor> GetFileDescriptors()
+        public FileDescriptor[] GetFileDescriptors()
         {
             var f = FormatId.CFSTR_FILEDESCRIPTORW.FormatEtc;
             DataObject.GetData(ref f, out STGMEDIUM s);
-            return s.InvokeHGlobal<byte, IEnumerable<FileDescriptor>>( FileDescriptor.FromFileGroupDescriptor );
+            return s.InvokeHGlobal<byte, FileDescriptor[]>( FileDescriptor.FromFileGroupDescriptor );
         }
 
-        public PIDL GetPidl()
-        {
-            SHGetIDListFromObject(DataObject, out PIDL pidl).ThrowIfFailed();
-            return pidl;
-        }
 
 
     }
