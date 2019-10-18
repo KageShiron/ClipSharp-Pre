@@ -15,16 +15,12 @@ namespace ClipSharp
     public class ComDataObject
     {
 
-        [DllImport("ole32.dll")]
-        static extern int OleGetClipboard(out IDataObject ppDataObj);
-
         public IDataObject DataObject { get; }
 
-        public ComDataObject()
+        public ComDataObject( IDataObject data )
         {
-            IDataObject data;
-            OleGetClipboard( out data );
             DataObject = data;
+                           
         }
 
         #region GetCanonicalFormatEtc
@@ -261,5 +257,27 @@ namespace ClipSharp
             throw new ArgumentException(nameof(id));
         }
 
+        public Stream GetUnmanagedStream(FormatId id)
+        {
+            var f = id.FormatEtc;
+            DataObject.GetData(ref f, out STGMEDIUM s);
+            return s.GetUnmanagedStream(true);
+        }
+
+        public IEnumerable<FileDescriptor> GetFileDescriptors()
+        {
+            var f = FormatId.CFSTR_FILEDESCRIPTORW.FormatEtc;
+            DataObject.GetData(ref f, out STGMEDIUM s);
+            return s.InvokeHGlobal<byte, IEnumerable<FileDescriptor>>( FileDescriptor.FromFileGroupDescriptor );
+        }
+
+        public PIDL GetPidl()
+        {
+            SHGetIDListFromObject(DataObject, out PIDL pidl).ThrowIfFailed();
+            return pidl;
+        }
+
+
     }
+
 }

@@ -54,6 +54,7 @@ namespace ClipSharp
         public static FORMATETC GetFormatEtc(FormatId id, int lindex = -1, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
             => GetFormatEtc((short)id.Id, lindex, dwAspect);
 
+
     }
 
 
