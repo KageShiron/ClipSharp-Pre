@@ -1,18 +1,24 @@
 ﻿using ClipSharp;
 using System;
+using System.IO;
+using System.Runtime.InteropServices;
 using static Vanara.PInvoke.Shell32;
 
 namespace ClipSharpTest
 {
     class Program
     {
+        [DllImport("ole32.dll", PreserveSig = false)]
+        static extern void OleInitialize(IntPtr pvReserved);
+        [STAThread()]
         static void Main(string[] args)
         {
-            var x = new ComDataObject();
-            foreach (var item in x.GetPidl())
+            OleInitialize(IntPtr.Zero);
+            var x = Clipboard.GetDataObject();
+            foreach (var item in x.GetFileContents())
             {
-                Console.WriteLine(item.ToString(Vanara.PInvoke.Shell32.SIGDN.SIGDN_NORMALDISPLAY));
-                Console.WriteLine(item.ToString());
+                Console.WriteLine(item.Key.FileName);
+                Console.WriteLine(new StreamReader( item.Value).ReadToEnd());
 
             }
         }
