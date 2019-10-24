@@ -51,7 +51,12 @@ namespace ClipSharp
         #endregion
 
 
-
+        /// <summary>
+        /// Ansi、Unicode、UTF8をSystem.Stringに変換します
+        /// </summary>
+        /// <param name="stg"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
         public static string GetString(this in STGMEDIUM stg, NativeStringType type = NativeStringType.Unicode)
         {
             if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException(nameof(stg));
@@ -95,6 +100,15 @@ namespace ClipSharp
             ReleaseStgMedium(in stg);
         }
         public delegate TResult ReadOnlySpanFunc<T,TResult>(ReadOnlySpan<T> span);
+
+        /// <summary>
+        /// HGLOBALについてfuncに与えられた処理を実行し、戻り値を返します。
+        /// </summary>
+        /// <typeparam name="TSpan"></typeparam>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="stg"></param>
+        /// <param name="func"></param>
+        /// <returns></returns>
         public static TResult InvokeHGlobal<TSpan, TResult>(this in STGMEDIUM stg, ReadOnlySpanFunc<TSpan, TResult> func)
         {
             if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException(nameof(stg));
@@ -114,6 +128,12 @@ namespace ClipSharp
             }
         }
 
+        /// <summary>
+        /// STGMEDIUMのHGLOBALから構造体一つ分を読み込みます
+        /// </summary>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="stg"></param>
+        /// <returns></returns>
         public static TResult ReadHGlobal<TResult>(this in STGMEDIUM stg)
         {
             if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException(nameof(stg));
@@ -133,27 +153,6 @@ namespace ClipSharp
         }
 
 
-        public static ReadOnlySpan<byte> BeginHGlobal(IntPtr hGlobal)
-        {
-            IntPtr locked = GlobalLock(hGlobal);
-            int size = (int)GlobalSize(locked).ToUInt32();
-            unsafe
-            {
-                return new ReadOnlySpan<byte>((byte*)locked, size);
-            }
-        }
-
-        public static void ReadOnlySpan<T>(Span<T> hGlobal) where T : unmanaged
-        {
-            unsafe
-            {
-                fixed (void* ptr = hGlobal)
-                {
-                    GlobalUnlock(ptr);
-
-                }
-            }
-        }
 
         /// <summary>
         /// 拡張メタファイルのデータをコピーしてMemoryStreamを作成します
@@ -181,6 +180,20 @@ namespace ClipSharp
             return new MemoryStream(bin);
         }
 
+        public static Stream GetManagedStream( in this STGMEDIUM stg)
+        {
+            switch (stg.tymed)
+            {
+                case TYMED.TYMED_MFPICT:
+                    //return StgMediumExtensions.CreateStreamFromHglobal(stg.unionmember);
+                    return StgMediumExtensions.CreateStreamFromMetaFile(stg.unionmember);
+                case TYMED.TYMED_ENHMF:
+                    return StgMediumExtensions.CreateStreamFromEnhMetaFile(stg.unionmember);
+                default:
+                    throw new NotImplementedException(stg.tymed.ToString());
+            }
+        }
+
         /// <summary>
         /// Unmanagedなメモリ領域を持つStreamを作成します。
         /// 2回目以降の呼び出し結果は未定義となります。
@@ -200,11 +213,6 @@ namespace ClipSharp
                 case TYMED.TYMED_ISTREAM:   // cast to IStream
                     s = (IStream)Marshal.GetObjectForIUnknown(stg.unionmember);
                     break;
-                case TYMED.TYMED_MFPICT:
-                    //return StgMediumExtensions.CreateStreamFromHglobal(stg.unionmember);
-                    return StgMediumExtensions.CreateStreamFromMetaFile(stg.unionmember);
-                case TYMED.TYMED_ENHMF:
-                    return StgMediumExtensions.CreateStreamFromEnhMetaFile(stg.unionmember);
                 default:                    // Error
                     throw new NotImplementedException(stg.tymed.ToString());
             }

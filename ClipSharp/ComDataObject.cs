@@ -203,39 +203,39 @@ namespace ClipSharp
             return s;
         }
 
-        //public Metafile GetMetafile()
-        //{
-        //    STGMEDIUM stg = new STGMEDIUM();
-        //    var f = FormatId.CF_METAFILEPICT.FormatEtc;
-        //    DataObject.GetData(ref f, out stg);
-        //    try
-        //    {
-        //        if (stg.tymed != TYMED.TYMED_MFPICT) throw new ApplicationException();
-        //        var hm = new Metafile(stg.unionmember,false);
-        //        var ret = (Metafile)hm.Clone();
-        //        hm.Dispose();
-        //        return ret;
-        //    }
-        //    finally
-        //    {
-        //        stg.Release();
-        //    }
-        //}
-        //public Metafile GetEnhancedMetafile()
-        //{
-        //    STGMEDIUM stg = new STGMEDIUM();
-        //    var f = FormatId.CF_ENHMETAFILE.FormatEtc;
-        //    DataObject.GetData(ref f, out stg);
-        //    try
-        //    {
-        //        if (stg.tymed != TYMED.TYMED_ENHMF) throw new ApplicationException();
-        //        return new Metafile(stg.GetManagedStream());
-        //    }
-        //    finally
-        //    {
-        //        stg.Release();
-        //    }
-        //}
+        public Metafile GetMetafile()
+        {
+            STGMEDIUM stg = new STGMEDIUM();
+            var f = FormatId.CF_METAFILEPICT.FormatEtc;
+            DataObject.GetData(ref f, out stg);
+            try
+            {
+                if (stg.tymed != TYMED.TYMED_MFPICT) throw new ApplicationException();
+                var hm = new Metafile(stg.unionmember, false);
+                var ret = (Metafile)hm.Clone();
+                hm.Dispose();
+                return ret;
+            }
+            finally
+            {
+                stg.Dispose();
+            }
+        }
+        public Metafile GetEnhancedMetafile()
+        {
+            STGMEDIUM stg = new STGMEDIUM();
+            var f = FormatId.CF_ENHMETAFILE.FormatEtc;
+            DataObject.GetData(ref f, out stg);
+            try
+            {
+                if (stg.tymed != TYMED.TYMED_ENHMF) throw new ApplicationException();
+                return new Metafile(stg.GetManagedStream());
+            }
+            finally
+            {
+                stg.Dispose();
+            }
+        }
 
         public string GetString() => GetString(FormatId.CF_UNICODETEXT);
 

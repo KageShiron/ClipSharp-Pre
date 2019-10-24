@@ -306,6 +306,8 @@ namespace ClipSharp
             return DotNetName;
         }
 
+        public override int GetHashCode() => this.Id;
+
         public static readonly FormatId CF_TEXT = new FormatId(1);
         public static readonly FormatId CF_BITMAP = new FormatId(2);
         public static readonly FormatId CF_METAFILEPICT = new FormatId(3);
