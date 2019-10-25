@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices.ComTypes;
-using System.Text;
 
 namespace ClipSharp
 {
@@ -23,7 +21,7 @@ namespace ClipSharp
             Canonical = cannonical; // man.GetCanonicalFormatEtc(f.cfFormat).cfFormat;
         }
 
-        public Exception Error { get; }
+        public Exception? Error { get; }
         public FormatId FormatId { get; }
         public DVASPECT DvAspect { get; }
         public IntPtr PtdNull { get; }

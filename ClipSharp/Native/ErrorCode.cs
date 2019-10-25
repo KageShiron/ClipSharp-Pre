@@ -394,19 +394,19 @@ namespace ClipSharp
             ThrowIfFailed(null);
         }
 
-        public void ThrowIfFailed(string message)
+        public void ThrowIfFailed(string? message)
         {
             var e = GetException(message);
 
             if (e != null) throw e;
         }
 
-        public Exception GetException()
+        public Exception? GetException()
         {
             return GetException(null);
         }
 
-        public Exception GetException(string message)
+        public Exception? GetException(string? message)
         {
             if (!Failed) return null;
 
@@ -420,7 +420,7 @@ namespace ClipSharp
             // the process of implementing an IErrorInfo and then use that.  There's no stock
             // implementations of IErrorInfo available and I don't think it's worth the maintenance
             // overhead of doing it, nor would it have significant value over this approach.
-            var e = Marshal.GetExceptionForHR((int)_value, new IntPtr(-1));
+            Exception? e = Marshal.GetExceptionForHR((int)_value, new IntPtr(-1));
             Debug.Assert(e != null);
             // ArgumentNullException doesn't have the right constructor parameters,
             // (nor does Win32Exception...)

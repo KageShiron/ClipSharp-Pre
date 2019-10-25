@@ -49,7 +49,7 @@ namespace ClipSharp
             uint read;
             if (offset != 0) throw new NotImplementedException();
             _stream.Read(buffer, count, out read);
-            return (int) read;
+            return (int)read;
         }
 
         public override void Write(byte[] buffer, int offset, int count)
@@ -95,7 +95,7 @@ namespace ClipSharp
 
         #region Dispose
 
-        public event EventHandler Disposed;
+        public event EventHandler? Disposed;
 
         private bool disposed = false;
 

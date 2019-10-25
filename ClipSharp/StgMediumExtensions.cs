@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
-using System.Text;
 
 namespace ClipSharp
 {
@@ -113,10 +110,10 @@ namespace ClipSharp
             var locked = GlobalLock(stg.unionmember);
             try
             {
-                var size = (int) GlobalSize(locked).ToUInt32();
+                var size = (int)GlobalSize(locked).ToUInt32();
                 unsafe
                 {
-                    var span = new ReadOnlySpan<TSpan>((void*) locked, size);
+                    var span = new ReadOnlySpan<TSpan>((void*)locked, size);
                     return func(span);
                 }
             }
@@ -138,10 +135,10 @@ namespace ClipSharp
             var locked = GlobalLock(stg.unionmember);
             try
             {
-                var size = (int) GlobalSize(locked).ToUInt32();
+                var size = (int)GlobalSize(locked).ToUInt32();
                 unsafe
                 {
-                    return new ReadOnlySpan<TResult>((void*) locked, size)[0];
+                    return new ReadOnlySpan<TResult>((void*)locked, size)[0];
                 }
             }
             finally
@@ -179,16 +176,14 @@ namespace ClipSharp
 
         public static Stream GetManagedStream(in this STGMEDIUM stg)
         {
-            switch (stg.tymed)
+            return stg.tymed switch
             {
-                case TYMED.TYMED_MFPICT:
-                    //return StgMediumExtensions.CreateStreamFromHglobal(stg.unionmember);
-                    return CreateStreamFromMetaFile(stg.unionmember);
-                case TYMED.TYMED_ENHMF:
-                    return CreateStreamFromEnhMetaFile(stg.unionmember);
-                default:
-                    throw new NotImplementedException(stg.tymed.ToString());
-            }
+                TYMED.TYMED_MFPICT =>
+                //return StgMediumExtensions.CreateStreamFromHglobal(stg.unionmember);
+                CreateStreamFromMetaFile(stg.unionmember),
+                TYMED.TYMED_ENHMF => CreateStreamFromEnhMetaFile(stg.unionmember),
+                _ => throw new NotImplementedException(stg.tymed.ToString())
+            };
         }
 
         /// <summary>
@@ -208,7 +203,7 @@ namespace ClipSharp
                     CreateStreamOnHGlobal(stg.unionmember, false, out s).ThrowIfFailed();
                     break;
                 case TYMED.TYMED_ISTREAM: // cast to IStream
-                    s = (IStream) Marshal.GetObjectForIUnknown(stg.unionmember);
+                    s = (IStream)Marshal.GetObjectForIUnknown(stg.unionmember);
                     break;
                 default: // Error
                     throw new NotImplementedException(stg.tymed.ToString());

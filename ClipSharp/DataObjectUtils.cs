@@ -44,18 +44,18 @@ namespace ClipSharp
         public static FORMATETC GetFormatEtc(string dataFormat, int lindex = -1,
             DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
         {
-            return GetFormatEtc((short)GetFormatId(dataFormat), lindex, dwAspect);
+            return GetFormatEtc((short) GetFormatId(dataFormat), lindex, dwAspect);
         }
 
         public static FORMATETC GetFormatEtc(int id, int lindex = -1, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
         {
-            return GetFormatEtc((short)id, lindex, dwAspect);
+            return GetFormatEtc((short) id, lindex, dwAspect);
         }
 
         public static FORMATETC GetFormatEtc(FormatId id, int lindex = -1,
             DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
         {
-            return GetFormatEtc((short)id.Id, lindex, dwAspect);
+            return GetFormatEtc((short) id.Id, lindex, dwAspect);
         }
     }
 

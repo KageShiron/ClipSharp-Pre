@@ -51,45 +51,27 @@ namespace ClipSharp
 
         public static FormatId FromDotNetName(string name)
         {
-            int num;
-            if (name.StartsWith("Format") && int.TryParse(name.Substring(6), out num)) return new FormatId(num);
-            switch (name)
+            if (name.StartsWith("Format") && int.TryParse(name.Substring(6), out var num)) return new FormatId(num);
+            return name switch
             {
-                case "Text":
-                    return new FormatId((int)CLIPFORMAT.CF_TEXT);
-                case "UnicodeText":
-                    return new FormatId((int)CLIPFORMAT.CF_UNICODETEXT);
-                case "DeviceIndependentBitmap":
-                    return new FormatId((int)CLIPFORMAT.CF_DIB);
-                case "Bitmap":
-                    return new FormatId((int)CLIPFORMAT.CF_BITMAP);
-                case "EnhancedMetafile":
-                    return new FormatId((int)CLIPFORMAT.CF_ENHMETAFILE);
-                case "MetaFilePict":
-                    return new FormatId((int)CLIPFORMAT.CF_METAFILEPICT);
-                case "SymbolicLink":
-                    return new FormatId((int)CLIPFORMAT.CF_SYLK);
-                case "DataInterchangeFormat":
-                    return new FormatId((int)CLIPFORMAT.CF_DIF);
-                case "TaggedImageFileFormat":
-                    return new FormatId((int)CLIPFORMAT.CF_TIFF);
-                case "OEMText":
-                    return new FormatId((int)CLIPFORMAT.CF_OEMTEXT);
-                case "Palette":
-                    return new FormatId((int)CLIPFORMAT.CF_PALETTE);
-                case "PenData":
-                    return new FormatId((int)CLIPFORMAT.CF_PENDATA);
-                case "RiffAudio":
-                    return new FormatId((int)CLIPFORMAT.CF_RIFF);
-                case "WaveAudio":
-                    return new FormatId((int)CLIPFORMAT.CF_WAVE);
-                case "FileDrop":
-                    return new FormatId((int)CLIPFORMAT.CF_HDROP);
-                case "Locale":
-                    return new FormatId((int)CLIPFORMAT.CF_LOCALE);
-            }
-
-            return FromNativeName(name);
+                "Text" => new FormatId((int)CLIPFORMAT.CF_TEXT),
+                "UnicodeText" => new FormatId((int)CLIPFORMAT.CF_UNICODETEXT),
+                "DeviceIndependentBitmap" => new FormatId((int)CLIPFORMAT.CF_DIB),
+                "Bitmap" => new FormatId((int)CLIPFORMAT.CF_BITMAP),
+                "EnhancedMetafile" => new FormatId((int)CLIPFORMAT.CF_ENHMETAFILE),
+                "MetaFilePict" => new FormatId((int)CLIPFORMAT.CF_METAFILEPICT),
+                "SymbolicLink" => new FormatId((int)CLIPFORMAT.CF_SYLK),
+                "DataInterchangeFormat" => new FormatId((int)CLIPFORMAT.CF_DIF),
+                "TaggedImageFileFormat" => new FormatId((int)CLIPFORMAT.CF_TIFF),
+                "OEMText" => new FormatId((int)CLIPFORMAT.CF_OEMTEXT),
+                "Palette" => new FormatId((int)CLIPFORMAT.CF_PALETTE),
+                "PenData" => new FormatId((int)CLIPFORMAT.CF_PENDATA),
+                "RiffAudio" => new FormatId((int)CLIPFORMAT.CF_RIFF),
+                "WaveAudio" => new FormatId((int)CLIPFORMAT.CF_WAVE),
+                "FileDrop" => new FormatId((int)CLIPFORMAT.CF_HDROP),
+                "Locale" => new FormatId((int)CLIPFORMAT.CF_LOCALE),
+                _ => FromNativeName(name)
+            };
         }
 
         internal static int GetFormatIdInternal(string formatName)
@@ -219,10 +201,8 @@ namespace ClipSharp
             _formats.TryAdd(id, new InternalFormatID("PersistentObject", ""));
         }
 
-        private static ConcurrentDictionary<int, InternalFormatID> _formats =
+        private static readonly ConcurrentDictionary<int, InternalFormatID> _formats =
             new ConcurrentDictionary<int, InternalFormatID>();
-
-        private static object _formatsLock = new object();
 
         private InternalFormatID GetFormatInformation(int id)
         {

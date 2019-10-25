@@ -24,8 +24,7 @@ namespace ClipSharp
 
         public virtual FORMATETC GetCanonicalFormatEtc(ref FORMATETC format)
         {
-            FORMATETC c;
-            var re = DataObject.GetCanonicalFormatEtc(ref format, out c);
+            DataObject.GetCanonicalFormatEtc(ref format, out var c);
             return c;
         }
 
@@ -82,11 +81,11 @@ namespace ClipSharp
 
         public virtual IEnumerable<DataObjectFormat> GetFormats(bool allFormat = false)
         {
-            IEnumFORMATETC enumFormatEtc = default;
+            IEnumFORMATETC enumFormatEtc = null!;
             try
             {
                 enumFormatEtc = DataObject.EnumFormatEtc(DATADIR.DATADIR_GET);
-                if (enumFormatEtc == null) return null;
+                if (enumFormatEtc == null) return Array.Empty<DataObjectFormat>();
                 enumFormatEtc.Reset();
                 var fe = new FORMATETC[1];
                 var fs = new List<DataObjectFormat>();
@@ -95,7 +94,8 @@ namespace ClipSharp
             }
             finally
             {
-                Marshal.ReleaseComObject(enumFormatEtc);
+                if (enumFormatEtc != null)
+                    Marshal.ReleaseComObject(enumFormatEtc);
             }
         }
 
@@ -143,7 +143,7 @@ namespace ClipSharp
                 DataObject.GetData(ref f, out s);
                 if (s.tymed != TYMED.TYMED_GDI) throw new ApplicationException("Invalid Tymed");
                 var bmp = Image.FromHbitmap(s.unionmember);
-                var ret = bmp.Clone() as Bitmap;
+                var ret = (Image)bmp.Clone();
                 bmp.Dispose();
                 return ret;
             }
@@ -221,9 +221,8 @@ namespace ClipSharp
 
         public Metafile GetMetafile()
         {
-            var stg = new STGMEDIUM();
             var f = FormatId.CF_METAFILEPICT.FormatEtc;
-            DataObject.GetData(ref f, out stg);
+            DataObject.GetData(ref f, out var stg);
             try
             {
                 if (stg.tymed != TYMED.TYMED_MFPICT) throw new ApplicationException();
@@ -240,9 +239,8 @@ namespace ClipSharp
 
         public Metafile GetEnhancedMetafile()
         {
-            var stg = new STGMEDIUM();
             var f = FormatId.CF_ENHMETAFILE.FormatEtc;
-            DataObject.GetData(ref f, out stg);
+            DataObject.GetData(ref f, out var stg);
             try
             {
                 if (stg.tymed != TYMED.TYMED_ENHMF) throw new ApplicationException();

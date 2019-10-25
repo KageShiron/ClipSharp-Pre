@@ -39,7 +39,7 @@ namespace ClipSharp
             return html;
         }
 
-        public string Version { get; set; }
+        public string? Version { get; set; }
         public int StartHtml { get; set; } = -1;
         public int EndHtml { get; set; } = -1;
         public int StartFragment { get; set; } = -1;
@@ -47,10 +47,10 @@ namespace ClipSharp
         public int StartSelection { get; set; } = -1;
         public int EndSelection { get; set; } = -1;
 
-        public string SourceUrl { get; set; }
+        public string? SourceUrl { get; set; }
 
-        public string Html { get; set; }
+        public string? Html { get; set; }
 
-        public string Fragment { get; set; }
+        public string? Fragment { get; set; }
     }
 }
