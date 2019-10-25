@@ -11,17 +11,21 @@ namespace ClipSharp
     public interface IStream
     {
         // ISequentialStream portion
-        void Read([MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1), Out] Byte[] pv, int cb, out uint pcbRead);
-        void Write([MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] Byte[] pv, int cb, IntPtr pcbWritten);
+        void Read([MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] [Out]
+            byte[] pv, int cb, out uint pcbRead);
+
+        void Write([MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)]
+            byte[] pv, int cb, IntPtr pcbWritten);
+
 
         // IStream portion
-        void Seek(Int64 dlibMove, SeekOrigin dwOrigin, out Int64 plibNewPosition);
-        void SetSize(Int64 libNewSize);
-        void CopyTo(IStream pstm, Int64 cb, IntPtr pcbRead, IntPtr pcbWritten);
+        void Seek(long dlibMove, SeekOrigin dwOrigin, out long plibNewPosition);
+        void SetSize(long libNewSize);
+        void CopyTo(IStream pstm, long cb, IntPtr pcbRead, IntPtr pcbWritten);
         void Commit(int grfCommitFlags);
         void Revert();
-        void LockRegion(Int64 libOffset, Int64 cb, int dwLockType);
-        void UnlockRegion(Int64 libOffset, Int64 cb, int dwLockType);
+        void LockRegion(long libOffset, long cb, int dwLockType);
+        void UnlockRegion(long libOffset, long cb, int dwLockType);
         void Stat(out STATSTG pstatstg, STATFLAG grfStatFlag);
         void Clone(out IStream ppstm);
     }
@@ -32,5 +36,4 @@ namespace ClipSharp
         NONAME = 1,
         NOOPEN = 2, //not implemented
     }
-    
 }

@@ -1,22 +1,20 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Linq;
 using System.Runtime.InteropServices.ComTypes;
+using System.Text;
 
 namespace ClipSharp
 {
     public struct FormatId
     {
         [DllImport("USER32.DLL", CharSet = CharSet.Auto, SetLastError = true)]
-        static extern int GetClipboardFormatName(int format
+        private static extern int GetClipboardFormatName(int format
             , [Out] StringBuilder lpszFormatName, int cchMaxCount);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        static extern int RegisterClipboardFormat(string lpszFormat);
+        private static extern int RegisterClipboardFormat(string lpszFormat);
 
         /// <summary>
         /// Create new DataFormatIdentify and add cache.
@@ -25,10 +23,11 @@ namespace ClipSharp
         /// <returns></returns>
         private static string RegisterFormatId(int id)
         {
-            string name = DataObjectUtils.GetFormatName(id);
+            var name = DataObjectUtils.GetFormatName(id);
             _formats.TryAdd(id, new InternalFormatID(name, ""));
             return name;
         }
+
         /// <summary>
         /// Create new DataFormatIdentify and add cache.
         /// </summary>
@@ -40,17 +39,16 @@ namespace ClipSharp
             _formats.TryAdd(id, new InternalFormatID(nativeName, ""));
             return new FormatId(id);
         }
+
         internal static FormatId FromNativeName(string nativeName)
         {
             foreach (var (k, v) in _formats)
-            {
                 if (string.Compare(v.NativeName, nativeName, StringComparison.OrdinalIgnoreCase) == 0)
-                {
                     return new FormatId(k);
-                }
-            }
+
             return RegisterFormatId(nativeName);
         }
+
         public static FormatId FromDotNetName(string name)
         {
             int num;
@@ -90,30 +88,23 @@ namespace ClipSharp
                 case "Locale":
                     return new FormatId((int)CLIPFORMAT.CF_LOCALE);
             }
+
             return FromNativeName(name);
         }
 
         internal static int GetFormatIdInternal(string formatName)
         {
-            int id = RegisterClipboardFormat(formatName);
+            var id = RegisterClipboardFormat(formatName);
             if (id == 0) throw new Win32Exception();
             return id;
         }
 
-        private static int RegisterClipboardFormat(object formatName)
-        {
-            throw new NotImplementedException();
-        }
-
         static FormatId()
         {
-
             var fmts = Enum.GetValues(typeof(CLIPFORMAT));
-            foreach (CLIPFORMAT c in fmts)
-            {
-                _formats.TryAdd((int)c, new InternalFormatID("", c.ToString()));
-            }
-            int id = GetFormatIdInternal("Shell IDList Array");
+            foreach (CLIPFORMAT c in fmts) _formats.TryAdd((int)c, new InternalFormatID("", c.ToString()));
+
+            var id = GetFormatIdInternal("Shell IDList Array");
             CFSTR_SHELLIDLIST = new FormatId(id);
             _formats.TryAdd(id, new InternalFormatID("Shell IDList Array", "CFSTR_SHELLIDLIST"));
             id = GetFormatIdInternal("Shell Object Offsets");
@@ -175,10 +166,12 @@ namespace ClipSharp
             _formats.TryAdd(id, new InternalFormatID("TargetCLSID", "CFSTR_TARGETCLSID"));
             id = GetFormatIdInternal("Logical Performed DropEffect");
             CFSTR_LOGICALPERFORMEDDROPEFFECT = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("Logical Performed DropEffect", "CFSTR_LOGICALPERFORMEDDROPEFFECT"));
+            _formats.TryAdd(id,
+                new InternalFormatID("Logical Performed DropEffect", "CFSTR_LOGICALPERFORMEDDROPEFFECT"));
             id = GetFormatIdInternal("Autoplay Enumerated IDList Array");
             CFSTR_AUTOPLAY_SHELLIDLISTS = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("Autoplay Enumerated IDList Array", "CFSTR_AUTOPLAY_SHELLIDLISTS"));
+            _formats.TryAdd(id,
+                new InternalFormatID("Autoplay Enumerated IDList Array", "CFSTR_AUTOPLAY_SHELLIDLISTS"));
             id = GetFormatIdInternal("UntrustedDragDrop");
             CFSTR_UNTRUSTEDDRAGDROP = new FormatId(id);
             _formats.TryAdd(id, new InternalFormatID("UntrustedDragDrop", "CFSTR_UNTRUSTEDDRAGDROP"));
@@ -224,19 +217,20 @@ namespace ClipSharp
             id = GetFormatIdInternal("PersistentObject");
             Serializable = new FormatId(id);
             _formats.TryAdd(id, new InternalFormatID("PersistentObject", ""));
-
-
         }
 
-        private static ConcurrentDictionary<int, InternalFormatID> _formats = new ConcurrentDictionary<int, InternalFormatID>();
+        private static ConcurrentDictionary<int, InternalFormatID> _formats =
+            new ConcurrentDictionary<int, InternalFormatID>();
+
         private static object _formatsLock = new object();
 
         private InternalFormatID GetFormatInformation(int id)
         {
-            if( _formats.TryGetValue(id,out var val))
+            if (_formats.TryGetValue(id, out var val))
             {
                 return val;
-            }else
+            }
+            else
             {
                 RegisterFormatId(id);
                 return GetFormatInformation(id);
@@ -247,6 +241,7 @@ namespace ClipSharp
         public string NativeName => GetFormatInformation(Id).NativeName;
         public string ConstantName => GetFormatInformation(Id).ConstantName;
         public FORMATETC FormatEtc => DataObjectUtils.GetFormatEtc(this);
+
         public string DotNetName => (CLIPFORMAT)Id switch
         {
             CLIPFORMAT.CF_TEXT => "Text",
@@ -268,45 +263,20 @@ namespace ClipSharp
             _ => NativeName == "" ? "Format" + Id : NativeName
         };
 
-        public FormatId(int id)
-        {
-            this.Id = id;
-        }
+        public FormatId(int id) => Id = id;
 
 
-        private class InternalFormatID
-        {
-            public InternalFormatID(string nativeName, string constantName)
-            {
-                this.NativeName = nativeName;
-                this.ConstantName = constantName;
-            }
-            public string NativeName { get; set; }
-            public string ConstantName { get; set; }
-        }
+        public override bool Equals(object obj) => (obj is FormatId) ? Equals((FormatId)obj) : false;
 
-
-        public override bool Equals(object obj)
-        {
-            if (obj is FormatId)
-            {
-                return this.Equals((FormatId)obj);
-            }
-            return false;
-        }
-
-        public bool Equals(FormatId p) => this.Id == p.Id;
+        public bool Equals(FormatId p) => Id == p.Id;
 
         public static bool operator ==(FormatId lhs, FormatId rhs) => lhs.Equals(rhs);
 
-        public static bool operator !=(FormatId lhs, FormatId rhs) => !(lhs.Equals(rhs));
+        public static bool operator !=(FormatId lhs, FormatId rhs) => !lhs.Equals(rhs);
 
-        public override string ToString()
-        {
-            return DotNetName;
-        }
+        public override string ToString() => DotNetName;
 
-        public override int GetHashCode() => this.Id;
+        public override int GetHashCode() => Id;
 
         public static readonly FormatId CF_TEXT = new FormatId(1);
         public static readonly FormatId CF_BITMAP = new FormatId(2);
@@ -366,5 +336,17 @@ namespace ClipSharp
         public static readonly FormatId Xaml;
         public static readonly FormatId XamlPackage;
         public static readonly FormatId ApplicationTrust;
+    }
+
+    internal class InternalFormatID
+    {
+        public InternalFormatID(string nativeName, string constantName)
+        {
+            NativeName = nativeName;
+            ConstantName = constantName;
+        }
+
+        public string NativeName { get; set; }
+        public string ConstantName { get; set; }
     }
 }

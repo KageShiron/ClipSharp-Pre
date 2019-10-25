@@ -10,11 +10,10 @@ namespace ClipSharp
 {
     public static class StgMediumExtensions
     {
-
         #region P/Invoke
 
         [DllImport("ole32.dll")]
-        static extern void ReleaseStgMedium(in STGMEDIUM pmedium);
+        private static extern void ReleaseStgMedium(in STGMEDIUM pmedium);
 
         [DllImport("kernel32.dll")]
         private static extern UIntPtr GlobalSize(IntPtr hMem);
@@ -41,12 +40,11 @@ namespace ClipSharp
         private static extern uint GetMetaFileBitsEx(IntPtr hmf, uint cbBuffer, IntPtr lpbBuffer);
 
         [DllImport("ole32.dll")]
-        static extern HRESULT CreateStreamOnHGlobal(IntPtr hGlobal, bool fDeleteOnRelease, out IStream ppstm);
+        private static extern HRESULT CreateStreamOnHGlobal(IntPtr hGlobal, bool fDeleteOnRelease, out IStream ppstm);
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-        static extern unsafe int DragQueryFile(IntPtr hDrop, int iFile,
+        private static extern unsafe int DragQueryFile(IntPtr hDrop, int iFile,
             char* lpszFile, uint cch);
-
 
         #endregion
 
@@ -61,7 +59,7 @@ namespace ClipSharp
         {
             if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException(nameof(stg));
 
-            IntPtr ptr = GlobalLock(stg.unionmember);
+            var ptr = GlobalLock(stg.unionmember);
             var str = type switch
             {
                 NativeStringType.Unicode => Marshal.PtrToStringUni(ptr),
@@ -72,24 +70,22 @@ namespace ClipSharp
             GlobalUnlock(ptr);
             return str;
         }
-        public unsafe static string[] GetFiles(this STGMEDIUM stg)
+
+        public static unsafe string[] GetFiles(this STGMEDIUM stg)
         {
             if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException("tymed is not hglobal");
 
-            int count = DragQueryFile(stg.unionmember, -1, null, 0);
+            var count = DragQueryFile(stg.unionmember, -1, null, 0);
             if (count <= 0) return Array.Empty<string>();
-            string[] files = new string[count];
+            var files = new string[count];
 
-            char* sb = stackalloc char[260];
-            for (int i = 0; i < count; i++)
-            {
+            var sb = stackalloc char[260];
+            for (var i = 0; i < count; i++)
                 if (DragQueryFile(stg.unionmember, i, sb, 260) > 0)
-                {
                     files[i] = new string(sb);
-                }
-            }
             return files;
         }
+
         /// <summary>
         /// STGMEDIUMを解放します
         /// </summary>
@@ -99,7 +95,8 @@ namespace ClipSharp
             if (stg.tymed == TYMED.TYMED_NULL) return;
             ReleaseStgMedium(in stg);
         }
-        public delegate TResult ReadOnlySpanFunc<T,TResult>(ReadOnlySpan<T> span);
+
+        public delegate TResult ReadOnlySpanFunc<T, TResult>(ReadOnlySpan<T> span);
 
         /// <summary>
         /// HGLOBALについてfuncに与えられた処理を実行し、戻り値を返します。
@@ -109,16 +106,17 @@ namespace ClipSharp
         /// <param name="stg"></param>
         /// <param name="func"></param>
         /// <returns></returns>
-        public static TResult InvokeHGlobal<TSpan, TResult>(this in STGMEDIUM stg, ReadOnlySpanFunc<TSpan, TResult> func)
+        public static TResult InvokeHGlobal<TSpan, TResult>(this in STGMEDIUM stg,
+            ReadOnlySpanFunc<TSpan, TResult> func)
         {
             if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException(nameof(stg));
-            IntPtr locked = GlobalLock(stg.unionmember);
+            var locked = GlobalLock(stg.unionmember);
             try
             {
-                int size = (int)GlobalSize(locked).ToUInt32();
+                var size = (int) GlobalSize(locked).ToUInt32();
                 unsafe
                 {
-                    var span = new ReadOnlySpan<TSpan>((void*)locked, size);
+                    var span = new ReadOnlySpan<TSpan>((void*) locked, size);
                     return func(span);
                 }
             }
@@ -137,13 +135,13 @@ namespace ClipSharp
         public static TResult ReadHGlobal<TResult>(this in STGMEDIUM stg)
         {
             if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException(nameof(stg));
-            IntPtr locked = GlobalLock(stg.unionmember);
+            var locked = GlobalLock(stg.unionmember);
             try
             {
-                int size = (int)GlobalSize(locked).ToUInt32();
+                var size = (int) GlobalSize(locked).ToUInt32();
                 unsafe
                 {
-                    return new ReadOnlySpan<TResult>((void*)locked, size)[0];
+                    return new ReadOnlySpan<TResult>((void*) locked, size)[0];
                 }
             }
             finally
@@ -153,7 +151,6 @@ namespace ClipSharp
         }
 
 
-
         /// <summary>
         /// 拡張メタファイルのデータをコピーしてMemoryStreamを作成します
         /// </summary>
@@ -161,8 +158,8 @@ namespace ClipSharp
         /// <returns>作成したStream</returns>
         private static Stream CreateStreamFromEnhMetaFile(IntPtr hEnhFile)
         {
-            uint size = GetEnhMetaFileBits(hEnhFile, 0, IntPtr.Zero);
-            byte[] bin = new byte[size];
+            var size = GetEnhMetaFileBits(hEnhFile, 0, IntPtr.Zero);
+            var bin = new byte[size];
             GetEnhMetaFileBits(hEnhFile, size, bin);
             return new MemoryStream(bin);
         }
@@ -174,21 +171,21 @@ namespace ClipSharp
         /// <returns>作成したStream</returns>
         private static Stream CreateStreamFromMetaFile(IntPtr hMetaFile)
         {
-            uint size = GetMetaFileBitsEx(hMetaFile, 0, IntPtr.Zero);
-            byte[] bin = new byte[size];
+            var size = GetMetaFileBitsEx(hMetaFile, 0, IntPtr.Zero);
+            var bin = new byte[size];
             GetMetaFileBitsEx(hMetaFile, size, bin);
             return new MemoryStream(bin);
         }
 
-        public static Stream GetManagedStream( in this STGMEDIUM stg)
+        public static Stream GetManagedStream(in this STGMEDIUM stg)
         {
             switch (stg.tymed)
             {
                 case TYMED.TYMED_MFPICT:
                     //return StgMediumExtensions.CreateStreamFromHglobal(stg.unionmember);
-                    return StgMediumExtensions.CreateStreamFromMetaFile(stg.unionmember);
+                    return CreateStreamFromMetaFile(stg.unionmember);
                 case TYMED.TYMED_ENHMF:
-                    return StgMediumExtensions.CreateStreamFromEnhMetaFile(stg.unionmember);
+                    return CreateStreamFromEnhMetaFile(stg.unionmember);
                 default:
                     throw new NotImplementedException(stg.tymed.ToString());
             }
@@ -207,31 +204,30 @@ namespace ClipSharp
             IStream s;
             switch (stg.tymed)
             {
-                case TYMED.TYMED_HGLOBAL:   // create IStream
+                case TYMED.TYMED_HGLOBAL: // create IStream
                     CreateStreamOnHGlobal(stg.unionmember, false, out s).ThrowIfFailed();
                     break;
-                case TYMED.TYMED_ISTREAM:   // cast to IStream
-                    s = (IStream)Marshal.GetObjectForIUnknown(stg.unionmember);
+                case TYMED.TYMED_ISTREAM: // cast to IStream
+                    s = (IStream) Marshal.GetObjectForIUnknown(stg.unionmember);
                     break;
-                default:                    // Error
+                default: // Error
                     throw new NotImplementedException(stg.tymed.ToString());
             }
+
             var cs = new ComStream(s, false, true);
 
             // Release StgMedium
             if (autoRelease)
-            {
-                cs.Disposed += (sender, __) =>  // when ComStream disposed
+                cs.Disposed += (sender, __) => // when ComStream disposed
                 {
                     // release created IStream
                     if ((stg.tymed & TYMED.TYMED_HGLOBAL) != 0) Marshal.ReleaseComObject(s);
                     stg.Dispose();
                 };
-            }
             return cs;
         }
-
     }
+
     public enum NativeStringType
     {
         Unicode,

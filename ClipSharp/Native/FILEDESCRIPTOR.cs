@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace ClipSharp.Native
 {
-
     [Flags]
     public enum FileDescriptorFlags : uint
     {
@@ -34,10 +31,11 @@ namespace ClipSharp.Native
         public long ftCreationTime;
         public long ftLastAccessTime;
         public long ftLastWriteTime;
-        public UInt32 nFileSizeHigh;
-        public UInt32 nFileSizeLow;
+        public uint nFileSizeHigh;
+        public uint nFileSizeLow;
         public fixed char cFileName[260];
     }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct SIZE
     {
@@ -50,6 +48,7 @@ namespace ClipSharp.Native
             this.cy = cy;
         }
     }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT
     {
@@ -58,9 +57,8 @@ namespace ClipSharp.Native
 
         public POINT(int x, int y)
         {
-            this.X = x;
-            this.Y = y;
+            X = x;
+            Y = y;
         }
-
     }
 }

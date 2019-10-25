@@ -1,14 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace ClipSharp
 {
     public class HtmlFormat
     {
-        static public HtmlFormat Parse(string val)
+        public static HtmlFormat Parse(string val)
         {
             var html = new HtmlFormat();
             var lines = val.Split(new string[] { "\n", "\n\r" }, StringSplitOptions.RemoveEmptyEntries);
@@ -18,39 +15,26 @@ namespace ClipSharp
                 var l = lines[i].Trim();
                 if (l.StartsWith("<")) break;
                 else if (l.StartsWith("Version"))
-                {
                     html.Version = Regex.Match(l, @"Version\s*:\s*(.*?)$").Groups[1].Value;
-                }
                 else if (l.StartsWith("StartHTML"))
-                {
                     html.StartHtml = int.Parse(Regex.Match(l, @"StartHTML\s*:\s*(.*?)$").Groups[1].Value);
-                }
                 else if (l.StartsWith("EndHTML"))
-                {
                     html.EndHtml = int.Parse(Regex.Match(l, @"EndHTML\s*:\s*(.*?)$").Groups[1].Value);
-                }
                 else if (l.StartsWith("StartFragment"))
-                {
                     html.StartFragment = int.Parse(Regex.Match(l, @"StartFragment\s*:\s*(.*?)$").Groups[1].Value);
-                }
                 else if (l.StartsWith("EndFragment"))
-                {
                     html.EndFragment = int.Parse(Regex.Match(l, @"EndFragment\s*:\s*(.*?)$").Groups[1].Value);
-                }
                 else if (l.StartsWith("StartSelection"))
-                {
                     html.StartSelection = int.Parse(Regex.Match(l, @"StartSelection\s*:\s*(.*?)$").Groups[1].Value);
-                }
                 else if (l.StartsWith("EndSelection"))
-                {
                     html.EndSelection = int.Parse(Regex.Match(l, @"EndSelection\s*:\s*(.*?)$").Groups[1].Value);
-                }
                 else if (l.StartsWith("SourceURL"))
-                {
                     html.SourceUrl = Regex.Match(l, @"SourceURL\s*:\s*(.*?)$").Groups[1].Value;
-                }
             }
-            html.Fragment = Regex.Match(val, @"<!--\s*StartFragment\s*-->(.*?)<!--\s*EndFragment\s*-->", RegexOptions.Singleline).Groups[1].Value;
+
+            html.Fragment = Regex
+                .Match(val, @"<!--\s*StartFragment\s*-->(.*?)<!--\s*EndFragment\s*-->", RegexOptions.Singleline)
+                .Groups[1].Value;
             html.Html = string.Join("\n", lines.AsSpan().Slice(i).ToArray());
             return html;
         }

@@ -32,7 +32,7 @@ namespace ClipSharp
         /// <summary>
         ///  Scrolling is about to start or is currently occurring in the drop target.
         /// </summary>
-        Scroll = unchecked((int)0x80000000),
+        Scroll = unchecked((int) 0x80000000),
 
         /// <summary>
         ///  The data is copied, removed from the drag source, and scrolled in the

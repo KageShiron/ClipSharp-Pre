@@ -1,41 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
-using System.Text;
 
 namespace ClipSharp
 {
-
     public static class DataObjectUtils
     {
         [DllImport("USER32.DLL", CharSet = CharSet.Auto, SetLastError = true)]
-        static extern unsafe int GetClipboardFormatName(int format
-            , char * lpszFormatName, int cchMaxCount);
+        private static extern unsafe int GetClipboardFormatName(int format
+            , char* lpszFormatName, int cchMaxCount);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        static extern int RegisterClipboardFormat(string lpszFormat);
+        private static extern int RegisterClipboardFormat(string lpszFormat);
 
         public static unsafe string GetFormatName(int formatId)
         {
-            char* sb = stackalloc char[260];
-            if (GetClipboardFormatName(formatId, sb, 260) == 0) return "";//$"Format{formatId}";
+            var sb = stackalloc char[260];
+            if (GetClipboardFormatName(formatId, sb, 260) == 0) return ""; //$"Format{formatId}";
             return new string(sb);
         }
 
         public static int GetFormatId(string formatName)
         {
             //if (formatName.StartsWith("Format")) return int.Parse(formatName.Substring(6));
-            int id = RegisterClipboardFormat(formatName);
+            var id = RegisterClipboardFormat(formatName);
             if (id == 0) throw new Win32Exception();
             return id;
         }
 
-        
+
         public static FORMATETC GetFormatEtc(short id, int lindex = -1, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
         {
-            FORMATETC f = new FORMATETC()
+            return new FORMATETC
             {
                 cfFormat = id,
                 dwAspect = dwAspect,
@@ -43,22 +39,28 @@ namespace ClipSharp
                 tymed = TYMED.TYMED_HGLOBAL | TYMED.TYMED_GDI | TYMED.TYMED_ISTREAM | TYMED.TYMED_ISTORAGE |
                         TYMED.TYMED_GDI | TYMED.TYMED_FILE | TYMED.TYMED_MFPICT | TYMED.TYMED_ENHMF
             };
-            return f;
         }
 
-        public static FORMATETC GetFormatEtc(string dataFormat, int lindex = -1, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
-            => GetFormatEtc((short)DataObjectUtils.GetFormatId(dataFormat), lindex, dwAspect);
+        public static FORMATETC GetFormatEtc(string dataFormat, int lindex = -1,
+            DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
+        {
+            return GetFormatEtc((short)GetFormatId(dataFormat), lindex, dwAspect);
+        }
 
         public static FORMATETC GetFormatEtc(int id, int lindex = -1, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
-            => GetFormatEtc((short)id, lindex, dwAspect);
-        public static FORMATETC GetFormatEtc(FormatId id, int lindex = -1, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
-            => GetFormatEtc((short)id.Id, lindex, dwAspect);
+        {
+            return GetFormatEtc((short)id, lindex, dwAspect);
+        }
 
-
+        public static FORMATETC GetFormatEtc(FormatId id, int lindex = -1,
+            DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
+        {
+            return GetFormatEtc((short)id.Id, lindex, dwAspect);
+        }
     }
 
 
-    public enum CLIPFORMAT : int
+    public enum CLIPFORMAT
     {
         CF_TEXT = 1,
         CF_BITMAP = 2,
@@ -81,6 +83,6 @@ namespace ClipSharp
         CF_DSPTEXT = 0x81,
         CF_DSPBITMAP = 0x82,
         CF_DSPMETAFILEPICT = 0x83,
-        CF_DSPENHMETAFILE = 0x8E,
+        CF_DSPENHMETAFILE = 0x8E
     }
 }

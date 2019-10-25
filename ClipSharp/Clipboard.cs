@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
-using System.Text;
 
 namespace ClipSharp
 {
@@ -15,14 +12,14 @@ namespace ClipSharp
         public static extern int OleGetClipboard(out IDataObject pDataObject);
 
 
-        private static bool IsCurrentDataObject( ComDataObject obj )
+        private static bool IsCurrentDataObject(ComDataObject obj)
         {
             return OleIsCurrentClipboard(obj.DataObject) == 0;
         }
 
         public static ComDataObject GetDataObject()
         {
-            OleGetClipboard(out IDataObject obj);
+            OleGetClipboard(out var obj);
             return new ComDataObject(obj);
         }
     }

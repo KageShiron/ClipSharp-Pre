@@ -1,15 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using STATSTG = System.Runtime.InteropServices.ComTypes.STATSTG;
 
 namespace ClipSharp
 {
-    class ComStream : Stream
+    internal class ComStream : Stream
     {
         private readonly IStream _stream;
         private readonly bool _autoRelease;
@@ -32,7 +28,7 @@ namespace ClipSharp
 
         public override void Flush()
         {
-            this._stream.Commit(0);
+            _stream.Commit(0);
         }
 
         public override long Seek(long offset, SeekOrigin origin)
@@ -58,7 +54,7 @@ namespace ClipSharp
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            if(_readOnly)throw new NotSupportedException();
+            if (_readOnly) throw new NotSupportedException();
             if (offset != 0) throw new NotImplementedException();
             _stream.Write(buffer, count, IntPtr.Zero);
         }
@@ -91,8 +87,8 @@ namespace ClipSharp
 
         public override long Position
         {
-            get { return this.Seek(0, SeekOrigin.Current); }
-            set { this.Seek(0, SeekOrigin.Begin); }
+            get => Seek(0, SeekOrigin.Current);
+            set => Seek(0, SeekOrigin.Begin);
         }
 
         #endregion Stream
@@ -110,13 +106,10 @@ namespace ClipSharp
                 if (!disposed)
                 {
                     disposed = true;
-                    Disposed?.Invoke(this,new EventArgs());
+                    Disposed?.Invoke(this, new EventArgs());
                     if (_autoRelease) Marshal.ReleaseComObject(_stream);
 
-                    if (disposing)
-                    {
-                        GC.SuppressFinalize(this);
-                    }
+                    if (disposing) GC.SuppressFinalize(this);
                 }
             }
             finally
@@ -124,6 +117,7 @@ namespace ClipSharp
                 base.Dispose(disposing);
             }
         }
+
         #endregion Dispose
     }
 }

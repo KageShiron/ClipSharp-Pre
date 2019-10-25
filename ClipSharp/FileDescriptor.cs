@@ -1,6 +1,5 @@
 ﻿using ClipSharp.Native;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -14,14 +13,15 @@ namespace ClipSharp
     public class FileDescriptor
     {
         private FILEDESCRIPTOR _fd;
+
         private FileDescriptor(in FILEDESCRIPTOR fd)
         {
-            this._fd = fd;
+            _fd = fd;
             unsafe
             {
                 fixed (char* ptr = fd.cFileName)
                 {
-                    this._FileName = new string(ptr);
+                    _FileName = new string(ptr);
                 }
             }
         }
@@ -31,7 +31,6 @@ namespace ClipSharp
         /// </summary>
         public FILEDESCRIPTOR FileDesriptor => _fd;
 
-        
 
         /// <summary>
         /// FILEGROUPDESCRIPTOR構造体からファイル記述子の配列を作成します
@@ -43,10 +42,7 @@ namespace ClipSharp
             var len = MemoryMarshal.Read<uint>(s);
             var fs = MemoryMarshal.Cast<byte, FILEDESCRIPTOR>(s.Slice(sizeof(uint)));
             var list = new FileDescriptor[len];
-            for (int i = 0; i < len; i++)
-            {
-                list[i] = new FileDescriptor(in fs[i]);
-            }
+            for (var i = 0; i < len; i++) list[i] = new FileDescriptor(in fs[i]);
             return list;
         }
 
@@ -76,7 +72,6 @@ namespace ClipSharp
                     _fd.dwFlags &= ~FileDescriptorFlags.FD_SIZEPOINT;
                 }
             }
-
         }
 
         public FileAttributes? FileAttributes
@@ -84,25 +79,29 @@ namespace ClipSharp
             get => ValueOrNull(FileDescriptorFlags.FD_ATTRIBUTES, _fd.dwFileAttributes);
             set => SetValue(FileDescriptorFlags.FD_ATTRIBUTES, ref _fd.dwFileAttributes, value);
         }
+
         public DateTime? CreationTime
         {
             get => FILETIME2DateTime(ValueOrNull(FileDescriptorFlags.FD_CREATETIME, _fd.ftCreationTime));
             set => SetDateTime(FileDescriptorFlags.FD_CREATETIME, ref _fd.ftCreationTime, value);
         }
+
         public DateTime? LastAccessTime
         {
             get => FILETIME2DateTime(ValueOrNull(FileDescriptorFlags.FD_ACCESSTIME, _fd.ftLastAccessTime));
             set => SetDateTime(FileDescriptorFlags.FD_ACCESSTIME, ref _fd.ftLastAccessTime, value);
         }
+
         public DateTime? WriteTime
         {
             get => FILETIME2DateTime(ValueOrNull(FileDescriptorFlags.FD_WRITESTIME, _fd.ftLastWriteTime));
             set => SetDateTime(FileDescriptorFlags.FD_WRITESTIME, ref _fd.ftLastWriteTime, value);
         }
+
         public ulong? FileSize
         {
-            get => ValueOrNull(FileDescriptorFlags.FD_FILESIZE, (((ulong)_fd.nFileSizeHigh) << 32 | _fd.nFileSizeLow));
-            set 
+            get => ValueOrNull(FileDescriptorFlags.FD_FILESIZE, ((ulong)_fd.nFileSizeHigh << 32) | _fd.nFileSizeLow);
+            set
             {
                 if (value.HasValue)
                 {
@@ -116,7 +115,9 @@ namespace ClipSharp
                 }
             }
         }
+
         public string _FileName;
+
         public string FileName
         {
             get => _FileName;
@@ -139,17 +140,19 @@ namespace ClipSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private TResult? ValueOrNull<TResult>(FileDescriptorFlags flag, TResult value) where TResult : struct
         {
-            if ((_fd.dwFlags & flag) == flag) return value; else return null;
+            if ((_fd.dwFlags & flag) == flag) return value;
+            else return null;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void SetValue<T>(FileDescriptorFlags flag, ref T target , T? value) where T :unmanaged
+        private void SetValue<T>(FileDescriptorFlags flag, ref T target, T? value) where T : unmanaged
         {
             if (value.HasValue)
             {
                 target = value.Value;
                 _fd.dwFlags |= flag;
-            }else
+            }
+            else
             {
                 _fd.dwFlags &= ~flag;
             }
@@ -172,13 +175,12 @@ namespace ClipSharp
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static DateTime? FILETIME2DateTime(long? t)
+        private static DateTime? FILETIME2DateTime(long? t)
         {
             if (t.HasValue)
                 return DateTime.FromFileTime(t.Value);
             else
                 return null;
         }
-
     }
 }

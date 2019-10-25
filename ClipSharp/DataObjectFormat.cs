@@ -15,6 +15,7 @@ namespace ClipSharp
                 NotDataObject = true;
                 return;
             }
+
             DvAspect = f.dwAspect;
             PtdNull = f.ptd;
             LIndex = f.lindex;
@@ -37,4 +38,3 @@ namespace ClipSharp
         }
     }
 }
-
