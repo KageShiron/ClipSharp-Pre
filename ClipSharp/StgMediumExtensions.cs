@@ -110,10 +110,10 @@ namespace ClipSharp
             var locked = GlobalLock(stg.unionmember);
             try
             {
-                var size = (int)GlobalSize(locked).ToUInt32();
+                var size = (int) GlobalSize(locked).ToUInt32();
                 unsafe
                 {
-                    var span = new ReadOnlySpan<TSpan>((void*)locked, size);
+                    var span = new ReadOnlySpan<TSpan>((void*) locked, size);
                     return func(span);
                 }
             }
@@ -135,10 +135,10 @@ namespace ClipSharp
             var locked = GlobalLock(stg.unionmember);
             try
             {
-                var size = (int)GlobalSize(locked).ToUInt32();
+                var size = (int) GlobalSize(locked).ToUInt32();
                 unsafe
                 {
-                    return new ReadOnlySpan<TResult>((void*)locked, size)[0];
+                    return new ReadOnlySpan<TResult>((void*) locked, size)[0];
                 }
             }
             finally
@@ -176,14 +176,20 @@ namespace ClipSharp
 
         public static Stream GetManagedStream(in this STGMEDIUM stg)
         {
-            return stg.tymed switch
+            switch (stg.tymed)
             {
-                TYMED.TYMED_MFPICT =>
-                //return StgMediumExtensions.CreateStreamFromHglobal(stg.unionmember);
-                CreateStreamFromMetaFile(stg.unionmember),
-                TYMED.TYMED_ENHMF => CreateStreamFromEnhMetaFile(stg.unionmember),
-                _ => throw new NotImplementedException(stg.tymed.ToString())
-            };
+                case TYMED.TYMED_MFPICT:
+                    return CreateStreamFromMetaFile(stg.unionmember);
+                case TYMED.TYMED_ENHMF:
+                    return CreateStreamFromEnhMetaFile(stg.unionmember);
+                default:
+                {
+                    using var s = GetUnmanagedStream(stg, true);
+                    var m = new MemoryStream((int) s.Length);
+                    s.CopyTo(m);
+                    return m;
+                }
+            }
         }
 
         /// <summary>
@@ -203,7 +209,7 @@ namespace ClipSharp
                     CreateStreamOnHGlobal(stg.unionmember, false, out s).ThrowIfFailed();
                     break;
                 case TYMED.TYMED_ISTREAM: // cast to IStream
-                    s = (IStream)Marshal.GetObjectForIUnknown(stg.unionmember);
+                    s = (IStream) Marshal.GetObjectForIUnknown(stg.unionmember);
                     break;
                 default: // Error
                     throw new NotImplementedException(stg.tymed.ToString());

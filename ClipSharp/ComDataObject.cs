@@ -13,71 +13,12 @@ namespace ClipSharp
 {
     public class ComDataObject
     {
-        public IDataObject DataObject { get; }
-
         public ComDataObject(IDataObject data)
         {
             DataObject = data;
         }
 
-        #region GetCanonicalFormatEtc
-
-        public virtual FORMATETC GetCanonicalFormatEtc(ref FORMATETC format)
-        {
-            DataObject.GetCanonicalFormatEtc(ref format, out var c);
-            return c;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public FORMATETC GetCanonicalFormatEtc(int format)
-        {
-            var f = DataObjectUtils.GetFormatEtc(format);
-            return GetCanonicalFormatEtc(ref f);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public FORMATETC GetCanonicalFormatEtc(string format)
-        {
-            var f = DataObjectUtils.GetFormatEtc(format);
-            return GetCanonicalFormatEtc(ref f);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual FORMATETC GetCanonicalFormatEtc(FormatId format)
-        {
-            return GetCanonicalFormatEtc(format.Id);
-        }
-
-        #endregion GetCanonicalFormatEtc
-
-        #region GetDataPresent
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool GetDataPresent(int format)
-        {
-            var f = DataObjectUtils.GetFormatEtc(format);
-            return GetDataPresent(ref f);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool GetDataPresent(string format)
-        {
-            var f = DataObjectUtils.GetFormatEtc(format);
-            return GetDataPresent(ref f);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool GetDataPresent(FormatId format)
-        {
-            return GetDataPresent(format.Id);
-        }
-
-        public virtual bool GetDataPresent(ref FORMATETC format)
-        {
-            return DataObject.QueryGetData(ref format) == 0;
-        }
-
-        #endregion GetDataPresent
+        public IDataObject DataObject { get; }
 
         public virtual IEnumerable<DataObjectFormat> GetFormats(bool allFormat = false)
         {
@@ -143,7 +84,7 @@ namespace ClipSharp
                 DataObject.GetData(ref f, out s);
                 if (s.tymed != TYMED.TYMED_GDI) throw new ApplicationException("Invalid Tymed");
                 var bmp = Image.FromHbitmap(s.unionmember);
-                var ret = (Image)bmp.Clone();
+                var ret = (Image) bmp.Clone();
                 bmp.Dispose();
                 return ret;
             }
@@ -193,7 +134,7 @@ namespace ClipSharp
                     {
                         fixed (void* ptr = x)
                         {
-                            for (var i = 0; i < x[0] + 1; i++) l.Add(new PIDL((IntPtr)((byte*)ptr + x[i + 1]), true));
+                            for (var i = 0; i < x[0] + 1; i++) l.Add(new PIDL((IntPtr) ((byte*) ptr + x[i + 1]), true));
                         }
                     }
 
@@ -227,7 +168,7 @@ namespace ClipSharp
             {
                 if (stg.tymed != TYMED.TYMED_MFPICT) throw new ApplicationException();
                 var hm = new Metafile(stg.unionmember, false);
-                var ret = (Metafile)hm.Clone();
+                var ret = (Metafile) hm.Clone();
                 hm.Dispose();
                 return ret;
             }
@@ -262,9 +203,9 @@ namespace ClipSharp
             if (id == FormatId.CF_TEXT || id == FormatId.Rtf || id == FormatId.CF_OEMTEXT ||
                 id == FormatId.CommaSeparatedValue)
                 return GetString(id, NativeStringType.Ansi);
-            else if (id == FormatId.Html || id == FormatId.Xaml)
+            if (id == FormatId.Html || id == FormatId.Xaml)
                 return GetString(id, NativeStringType.Utf8);
-            else if (id == FormatId.CF_UNICODETEXT || id == FormatId.ApplicationTrust)
+            if (id == FormatId.CF_UNICODETEXT || id == FormatId.ApplicationTrust)
                 return GetString(id, NativeStringType.Unicode);
             throw new ArgumentException(nameof(id));
         }
@@ -283,5 +224,64 @@ namespace ClipSharp
             DataObject.GetData(ref f, out var s);
             return s.InvokeHGlobal<byte, FileDescriptor[]>(FileDescriptor.FromFileGroupDescriptor);
         }
+
+        #region GetCanonicalFormatEtc
+
+        public virtual FORMATETC GetCanonicalFormatEtc(ref FORMATETC format)
+        {
+            DataObject.GetCanonicalFormatEtc(ref format, out var c);
+            return c;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FORMATETC GetCanonicalFormatEtc(int format)
+        {
+            var f = DataObjectUtils.GetFormatEtc(format);
+            return GetCanonicalFormatEtc(ref f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FORMATETC GetCanonicalFormatEtc(string format)
+        {
+            var f = DataObjectUtils.GetFormatEtc(format);
+            return GetCanonicalFormatEtc(ref f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual FORMATETC GetCanonicalFormatEtc(FormatId format)
+        {
+            return GetCanonicalFormatEtc(format.Id);
+        }
+
+        #endregion GetCanonicalFormatEtc
+
+        #region GetDataPresent
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool GetDataPresent(int format)
+        {
+            var f = DataObjectUtils.GetFormatEtc(format);
+            return GetDataPresent(ref f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool GetDataPresent(string format)
+        {
+            var f = DataObjectUtils.GetFormatEtc(format);
+            return GetDataPresent(ref f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool GetDataPresent(FormatId format)
+        {
+            return GetDataPresent(format.Id);
+        }
+
+        public virtual bool GetDataPresent(ref FORMATETC format)
+        {
+            return DataObject.QueryGetData(ref format) == 0;
+        }
+
+        #endregion GetDataPresent
     }
 }
