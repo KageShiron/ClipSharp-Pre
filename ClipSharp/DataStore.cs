@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using Vanara.PInvoke;
 using IComDataObject = System.Runtime.InteropServices.ComTypes.IDataObject;
 using IDataObject = System.Windows.Forms.IDataObject;
 
@@ -40,6 +42,11 @@ namespace ClipSharp
         public void SetData(FormatId id, object data)
         {
             store[id] = data;
+        }
+
+        public object GetData(FormatId id)
+        {
+            return store.TryGetValue(id, out object value) ? value : throw new DirectoryNotFoundException();
         }
 
         public T GetData<T>()
@@ -105,37 +112,94 @@ namespace ClipSharp
         #region IComDataObject
         int IComDataObject.DAdvise(ref FORMATETC pFormatetc, ADVF advf, IAdviseSink adviseSink, out int connection)
         {
-            throw new NotImplementedException();
+            connection = 0;
+            return HRESULT.E_NOTIMPL.Code;
         }
 
-        void IComDataObject.DUnadvise(int connection)
-        {
-            throw new NotImplementedException();
-        }
+        void IComDataObject.DUnadvise(int connection) => HRESULT.E_NOTIMPL.ThrowIfFailed();
 
-        int IComDataObject.EnumDAdvise(out IEnumSTATDATA enumAdvise)
+        int IComDataObject.EnumDAdvise(out IEnumSTATDATA? enumAdvise)
         {
-            throw new NotImplementedException();
+            enumAdvise = null;
+            return unchecked((int)0x80040003); // unchecked((int)0x80040003),
         }
 
         IEnumFORMATETC IComDataObject.EnumFormatEtc(DATADIR direction)
         {
-            throw new NotImplementedException();
+            if (direction == DATADIR.DATADIR_GET)
+            {
+                return new FormatEnumerator(this);
+            }
+            else
+            {
+                HRESULT.E_NOTIMPL.ThrowIfFailed();
+            }
         }
 
         int IComDataObject.GetCanonicalFormatEtc(ref FORMATETC formatIn, out FORMATETC formatOut)
         {
-            throw new NotImplementedException();
+            formatOut = default;
+            return 0x00040130; //DATA_S_SAMEFORMATETC
         }
-
         void IComDataObject.GetData(ref FORMATETC format, out STGMEDIUM medium)
         {
-            throw new NotImplementedException();
+            medium = new STGMEDIUM();
+            if ((format.tymed & TYMED.TYMED_HGLOBAL) != 0)
+            {
+                medium.tymed = TYMED.TYMED_HGLOBAL;
+                var hglobal = Kernel32.GlobalAlloc(Kernel32.GMEM.GMEM_MOVEABLE | Kernel32.GMEM.GMEM_ZEROINIT, 1);
+                if (hglobal.IsNull)
+                {
+                    throw new OutOfMemoryException();
+                }
+                medium.unionmember = hglobal.DangerousGetHandle();
+                try
+                {
+                    ((IComDataObject)this).GetDataHere(ref format, ref medium);
+                }
+                catch
+                {
+                    Kernel32.GlobalFree(hglobal);
+                }
+            }
+        }
+
+        private unsafe HRESULT SaveStringToHandle(ref IntPtr handle,string s ,bool utf16)
+        {
+            if (handle == IntPtr.Zero) return HRESULT.E_INVALIDARG;
+            if (utf16)
+            {
+                int nb = (s.Length + 1) * 2;
+
+                // Overflow checking
+                if (nb < s.Length) throw new ArgumentOutOfRangeException(nameof(s));
+
+                var hg = Kernel32.GlobalReAlloc(handle, nb, Kernel32.GMEM.GMEM_MOVEABLE | Kernel32.GMEM.GMEM_ZEROINIT);
+                if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+                var lc = Kernel32.GlobalLock(hg);
+
+                fixed (char* firstChar = s)
+                {
+                    Buffer.MemoryCopy(firstChar, lc.ToPointer(), nb, nb);
+                }
+                Kernel32.GlobalUnlock(hg);
+            }
+            return HRESULT.S_OK
         }
 
         void IComDataObject.GetDataHere(ref FORMATETC format, ref STGMEDIUM medium)
         {
-            throw new NotImplementedException();
+            var id = new FormatId(format.cfFormat);
+            if(!TryGetData(id,out object val))
+            {
+                Marshal.ThrowExceptionForHR(unchecked((int)0x80040064));
+            }
+
+            switch(val)
+            {
+                case string val:
+                    MemoryMarshal.Write()
+            }
         }
 
         int IComDataObject.QueryGetData(ref FORMATETC format)
