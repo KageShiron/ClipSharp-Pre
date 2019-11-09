@@ -163,8 +163,43 @@ namespace ClipSharp
                 }
             }
         }
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern unsafe int WideCharToMultiByte(
+            uint CodePage,
+            Kernel32.WCCONV dwFlags,
+            [MarshalAs(UnmanagedType.LPWStr), In] string lpWideCharStr,
+            int cchWideChar,
+            byte* lpMultiByteStr,
+            int cbMultiByte,
+            IntPtr lpDefaultChar = default(IntPtr),
+            IntPtr lpUsedDefaultChar = default(IntPtr));
+        internal static unsafe int StringToAnsiString(string s, byte* buffer, int bufferLength, bool bestFit = false, bool throwOnUnmappableChar = false)
+        {
+            int nb;
 
-        private unsafe HRESULT SaveStringToHandle(ref IntPtr handle,string s ,bool utf16)
+            var flags = bestFit ? (Kernel32.WCCONV)0 : Kernel32.WCCONV.WC_NO_BEST_FIT_CHARS;
+            uint defaultCharUsed = 0;
+
+            nb = WideCharToMultiByte(
+                Kernel32.CP_ACP,
+                flags,
+                s,
+                s.Length,
+                buffer,
+                bufferLength,
+                IntPtr.Zero,
+                throwOnUnmappableChar ? new IntPtr(&defaultCharUsed) : IntPtr.Zero);
+
+            if (defaultCharUsed != 0)
+            {
+                throw new ArgumentException(nameof(defaultCharUsed));
+            }
+
+            buffer[nb] = 0;
+            return nb;
+        }
+
+        private unsafe HRESULT SaveStringToHandle(ref IntPtr handle, string s, bool utf16)
         {
             if (handle == IntPtr.Zero) return HRESULT.E_INVALIDARG;
             if (utf16)
@@ -175,6 +210,7 @@ namespace ClipSharp
                 if (nb < s.Length) throw new ArgumentOutOfRangeException(nameof(s));
 
                 var hg = Kernel32.GlobalReAlloc(handle, nb, Kernel32.GMEM.GMEM_MOVEABLE | Kernel32.GMEM.GMEM_ZEROINIT);
+                handle = hg.DangerousGetHandle();
                 if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
                 var lc = Kernel32.GlobalLock(hg);
 
@@ -184,21 +220,40 @@ namespace ClipSharp
                 }
                 Kernel32.GlobalUnlock(hg);
             }
-            return HRESULT.S_OK
+            else
+            {
+                // Ansi. See also StringToHGlobalAnsi
+
+                long lnb = (s.Length + 1) * (long)Marshal.SystemMaxDBCSCharSize;
+                int nb = (int)lnb;
+                if (nb != lnb) throw new ArgumentOutOfRangeException(nameof(s));
+
+                var hg = Kernel32.GlobalReAlloc(handle, nb, Kernel32.GMEM.GMEM_MOVEABLE | Kernel32.GMEM.GMEM_ZEROINIT);
+                handle = hg.DangerousGetHandle();
+                if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+
+                var lc = Kernel32.GlobalLock(hg);
+                StringToAnsiString(s, (byte*)lc.ToPointer(), nb);
+                Kernel32.GlobalUnlock(hg);
+            }
+            return HRESULT.S_OK;
         }
 
         void IComDataObject.GetDataHere(ref FORMATETC format, ref STGMEDIUM medium)
         {
             var id = new FormatId(format.cfFormat);
-            if(!TryGetData(id,out object val))
+            if (!TryGetData(id, out object val))
             {
                 Marshal.ThrowExceptionForHR(unchecked((int)0x80040064));
             }
 
-            switch(val)
+            switch (val)
             {
-                case string val:
-                    MemoryMarshal.Write()
+                case string s:
+                    var ptr = medium.unionmember;
+                    SaveStringToHandle(ref ptr, s, true);
+                    medium.unionmember = ptr;
+                    break;
             }
         }
 
