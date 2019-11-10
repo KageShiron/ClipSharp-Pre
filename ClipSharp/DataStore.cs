@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using System.Text;
 using Vanara.PInvoke;
 using IComDataObject = System.Runtime.InteropServices.ComTypes.IDataObject;
 using IDataObject = System.Windows.Forms.IDataObject;
@@ -199,44 +200,128 @@ namespace ClipSharp
             return nb;
         }
 
-        private unsafe HRESULT SaveStringToHandle(ref IntPtr handle, string s, bool utf16)
+        private unsafe HRESULT SaveStringToHandle(ref IntPtr handle, string s, NativeStringType type)
         {
             if (handle == IntPtr.Zero) return HRESULT.E_INVALIDARG;
-            if (utf16)
+            switch (type)
             {
-                int nb = (s.Length + 1) * 2;
+                case NativeStringType.Unicode:
+                    {
+                        int nb = (s.Length + 1) * 2;
 
-                // Overflow checking
-                if (nb < s.Length) throw new ArgumentOutOfRangeException(nameof(s));
+                        // Overflow checking
+                        if (nb < s.Length) throw new ArgumentOutOfRangeException(nameof(s));
 
-                var hg = Kernel32.GlobalReAlloc(handle, nb, Kernel32.GMEM.GMEM_MOVEABLE | Kernel32.GMEM.GMEM_ZEROINIT);
-                handle = hg.DangerousGetHandle();
-                if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
-                var lc = Kernel32.GlobalLock(hg);
+                        var hg = Kernel32.GlobalReAlloc(handle, nb,
+                            Kernel32.GMEM.GMEM_MOVEABLE | Kernel32.GMEM.GMEM_ZEROINIT);
+                        handle = hg.DangerousGetHandle();
+                        if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+                        var lc = Kernel32.GlobalLock(hg);
 
-                fixed (char* firstChar = s)
-                {
-                    Buffer.MemoryCopy(firstChar, lc.ToPointer(), nb, nb);
-                }
-                Kernel32.GlobalUnlock(hg);
-            }
-            else
-            {
-                // Ansi. See also StringToHGlobalAnsi
+                        fixed (char* firstChar = s)
+                        {
+                            Buffer.MemoryCopy(firstChar, lc.ToPointer(), nb, nb);
+                        }
 
-                long lnb = (s.Length + 1) * (long)Marshal.SystemMaxDBCSCharSize;
-                int nb = (int)lnb;
-                if (nb != lnb) throw new ArgumentOutOfRangeException(nameof(s));
+                        Kernel32.GlobalUnlock(hg);
+                        break;
+                    }
+                case NativeStringType.Ansi:
+                    {
+                        // Ansi. See also StringToHGlobalAnsi
 
-                var hg = Kernel32.GlobalReAlloc(handle, nb, Kernel32.GMEM.GMEM_MOVEABLE | Kernel32.GMEM.GMEM_ZEROINIT);
-                handle = hg.DangerousGetHandle();
-                if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+                        long lnb = (s.Length + 1) * (long)Marshal.SystemMaxDBCSCharSize;
+                        int nb = (int)lnb;
+                        if (nb != lnb) throw new ArgumentOutOfRangeException(nameof(s));
 
-                var lc = Kernel32.GlobalLock(hg);
-                StringToAnsiString(s, (byte*)lc.ToPointer(), nb);
-                Kernel32.GlobalUnlock(hg);
+                        var hg = Kernel32.GlobalReAlloc(handle, nb,
+                            Kernel32.GMEM.GMEM_MOVEABLE | Kernel32.GMEM.GMEM_ZEROINIT);
+                        handle = hg.DangerousGetHandle();
+                        if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+
+                        var lc = Kernel32.GlobalLock(hg);
+                        StringToAnsiString(s, (byte*)lc.ToPointer(), nb);
+                        Kernel32.GlobalUnlock(hg);
+                        break;
+                    }
+                case NativeStringType.Utf8:
+                    {
+                        var enc = new UTF8Encoding();
+                        int nb = enc.GetByteCount(s) + 1;
+                        var hg = Kernel32.GlobalReAlloc(handle, nb,
+                            Kernel32.GMEM.GMEM_MOVEABLE | Kernel32.GMEM.GMEM_ZEROINIT);
+                        handle = hg.DangerousGetHandle();
+                        if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+
+                        var lc = Kernel32.GlobalLock(hg);
+                        fixed (char* firstChar = s)
+                        {
+                            enc.GetBytes(firstChar, s.Length, (byte*)lc.ToPointer(), nb);
+                        }
+                        Kernel32.GlobalUnlock(hg);
+                        break;
+                    }
             }
             return HRESULT.S_OK;
+        }
+
+        unsafe HRESULT SaveHdropToHandle(ref IntPtr handle, string[] files)
+        {
+            int size = sizeof(Shell32.DROPFILES);
+            foreach (var f in files)
+            {
+                size += (f.Length + 1) * 2;
+            }
+
+            size += 2; // Terminal null
+
+            var hg = Kernel32.GlobalReAlloc(handle, size, Kernel32.GMEM.GMEM_MOVEABLE);
+            if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+
+            var lc = Kernel32.GlobalLock(hg);
+            Shell32.DROPFILES* df = (Shell32.DROPFILES*)lc.ToPointer();
+            df->pFiles = (uint)files.Length;
+            df->fNC = false;
+            df->fWide = false;
+
+            char* ptr = ((char*)df) + sizeof(Shell32.DROPFILES);
+            foreach (var f in files)
+            {
+                fixed (char* str = f)
+                {
+                    Buffer.MemoryCopy(str, ptr, f.Length + 2, f.Length + 2);
+                    ptr[f.Length] = '\0';
+                    ptr += f.Length + 1;
+                }
+                *ptr = '\0';
+            }
+            Kernel32.GlobalUnlock(hg);
+            return HRESULT.S_OK;
+        }
+
+        unsafe HRESULT SaveSpanToHandle(ref IntPtr handle, Span<byte> src)
+        {
+            var hg = Kernel32.GlobalReAlloc(handle, src.Length, Kernel32.GMEM.GMEM_MOVEABLE);
+            if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+            handle = hg.DangerousGetHandle();
+            var dist = new Span<byte>(Kernel32.GlobalLock(hg).ToPointer(), src.Length);
+            src.CopyTo(dist);
+            Kernel32.GlobalUnlock(hg);
+            return HRESULT.S_OK;
+
+        }
+
+        unsafe HRESULT SaveStreamToHandle(ref IntPtr handle, Stream src)
+        {
+            var hg = Kernel32.GlobalReAlloc(handle, src.Length, Kernel32.GMEM.GMEM_MOVEABLE);
+            if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+            handle = hg.DangerousGetHandle();
+            var dist = new Span<byte>(Kernel32.GlobalLock(hg).ToPointer(), (int)src.Length);
+            src.Position = 0;
+            src.Read(dist);
+            Kernel32.GlobalUnlock(hg);
+            return HRESULT.S_OK;
+
         }
 
         void IComDataObject.GetDataHere(ref FORMATETC format, ref STGMEDIUM medium)
@@ -247,14 +332,40 @@ namespace ClipSharp
                 Marshal.ThrowExceptionForHR(unchecked((int)0x80040064));
             }
 
+            var ptr = medium.unionmember;
+            if (id == FormatId.CF_HDROP && val is string[] files)
+            {
+                SaveHdropToHandle(ref ptr, files);
+                medium.unionmember = ptr;
+                return;
+            }
+
             switch (val)
             {
                 case string s:
-                    var ptr = medium.unionmember;
-                    SaveStringToHandle(ref ptr, s, true);
-                    medium.unionmember = ptr;
+                    {
+                        if (id == FormatId.CF_TEXT || id == FormatId.Rtf || id == FormatId.CF_OEMTEXT ||
+                            id == FormatId.CommaSeparatedValue || id == FormatId.CFSTR_INETURLA)
+                            SaveStringToHandle(ref ptr, s, NativeStringType.Unicode).ThrowIfFailed();
+                        if (id == FormatId.Html || id == FormatId.Xaml)
+                            SaveStringToHandle(ref ptr, s, NativeStringType.Utf8).ThrowIfFailed();
+                        ;
+                        if (id == FormatId.CF_UNICODETEXT || id == FormatId.ApplicationTrust ||
+                            id == FormatId.CFSTR_INETURLW)
+                            SaveStringToHandle(ref ptr, s, NativeStringType.Ansi).ThrowIfFailed();
+                        break;
+                    }
+                case Memory<byte> m:
+                    SaveSpanToHandle(ref ptr, m.Span).ThrowIfFailed();
+                    break;
+                case byte[] b:
+                    SaveSpanToHandle(ref ptr, b.AsSpan()).ThrowIfFailed();
+                    break;
+                case Stream s:
+                    SaveStreamToHandle(ref ptr, s).ThrowIfFailed();
                     break;
             }
+            medium.unionmember = ptr;
         }
 
         int IComDataObject.QueryGetData(ref FORMATETC format)
