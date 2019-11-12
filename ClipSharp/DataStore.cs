@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using Vanara.Extensions;
 using Vanara.PInvoke;
 using IComDataObject = System.Runtime.InteropServices.ComTypes.IDataObject;
 using IDataObject = System.Windows.Forms.IDataObject;
@@ -17,6 +20,12 @@ namespace ClipSharp
     {
         private readonly IDataObject innerData;
         private readonly Dictionary<FormatId, object> store = new Dictionary<FormatId, object>();
+
+        private const TYMED AcceptableTymed = TYMED.TYMED_ENHMF | TYMED.TYMED_HGLOBAL | TYMED.TYMED_ISTORAGE |
+                                              TYMED.TYMED_MFPICT | TYMED.TYMED_GDI;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool IsAcceptableTymed(TYMED val) => (val & AcceptableTymed) != 0;
 
         public DataObject(IDataObject data)
         {
@@ -129,12 +138,9 @@ namespace ClipSharp
         {
             if (direction == DATADIR.DATADIR_GET)
             {
-                return new FormatEnumerator(this);
+                return new FormatEnumrator(this);
             }
-            else
-            {
-                HRESULT.E_NOTIMPL.ThrowIfFailed();
-            }
+            throw HRESULT.E_NOTIMPL.GetException();
         }
 
         int IComDataObject.GetCanonicalFormatEtc(ref FORMATETC formatIn, out FORMATETC formatOut)
@@ -340,6 +346,11 @@ namespace ClipSharp
                 return;
             }
 
+            if (id == FormatId.CF_BITMAP && val is Bitmap bmp)
+            {
+                //TODO:
+            }
+
             switch (val)
             {
                 case string s:
@@ -368,9 +379,18 @@ namespace ClipSharp
             medium.unionmember = ptr;
         }
 
+        private const int DV_E_TYMED = unchecked((int)0x80040069);
+        private const int DV_E_DVASPECT = unchecked((int)0x8004006B);
+        private const int DV_E_FORMATETC = unchecked((int)0x80040064);
+
+
         int IComDataObject.QueryGetData(ref FORMATETC format)
         {
-            throw new NotImplementedException();
+            if (format.dwAspect != DVASPECT.DVASPECT_CONTENT) return DV_E_DVASPECT;
+            if (!IsAcceptableTymed((format.tymed))) return DV_E_TYMED;
+            if (format.cfFormat == 0) return HRESULT.S_FALSE.Code;
+            if (!GetDataPresent(format.GetFormatId())) return DV_E_FORMATETC;
+            return HRESULT.S_OK.Code;
         }
 
         void IComDataObject.SetData(ref FORMATETC formatIn, ref STGMEDIUM medium, bool release)
@@ -388,6 +408,61 @@ namespace ClipSharp
         public DataStoreEntry(T data)
         {
             this.Data = data;
+        }
+    }
+
+    public class FormatEnumrator : IEnumFORMATETC
+    {
+        private IEnumerator<FormatId> data;
+        private int current = 0;
+        public FormatEnumrator(DataObject dataObject)
+        {
+            this.data = dataObject.GetFormats().GetEnumerator();
+        }
+        public void Clone(out IEnumFORMATETC newEnum)
+        {
+
+            throw new NotImplementedException();
+        }
+
+        public int Next(int celt, FORMATETC[] rgelt, int[] pceltFetched)
+        {
+            if (!data.MoveNext())
+            {
+                if (pceltFetched != null) pceltFetched[0] = 0;
+                return HRESULT.S_FALSE.Code;
+            }
+
+
+            var id = data.Current.FormatEtc.GetFormatId();
+            rgelt[0].cfFormat = (short)id.Id;
+
+            if (id == FormatId.CF_BITMAP) rgelt[0].tymed = TYMED.TYMED_GDI;
+            else if (id == FormatId.CF_ENHMETAFILE) rgelt[0].tymed = TYMED.TYMED_ENHMF;
+            else if (id == FormatId.CF_METAFILEPICT) rgelt[0].tymed = TYMED.TYMED_MFPICT;
+            else rgelt[0].tymed = TYMED.TYMED_GDI;
+            rgelt[0].dwAspect = DVASPECT.DVASPECT_CONTENT;
+            rgelt[0].ptd = IntPtr.Zero;
+            rgelt[0].lindex = -1;
+            if (pceltFetched != null) pceltFetched[0] = 1;
+
+            return HRESULT.S_OK.Code;
+        }
+
+        public int Reset()
+        {
+            data.Reset();
+            return HRESULT.S_OK.Code;
+        }
+
+        public int Skip(int celt)
+        {
+            do
+            {
+                if (!data.MoveNext()) return HRESULT.S_FALSE.Code;
+            } while (celt-- > 0);
+
+            return HRESULT.S_OK.Code;
         }
     }
 }
