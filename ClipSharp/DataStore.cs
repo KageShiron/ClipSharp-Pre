@@ -27,7 +27,7 @@ namespace ClipSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool IsAcceptableTymed(TYMED val) => (val & AcceptableTymed) != 0;
 
-        public DataObject( )
+        public DataObject()
         {
         }
         public void SetData<T>(T data)
@@ -137,6 +137,27 @@ namespace ClipSharp
         void IComDataObject.GetData(ref FORMATETC format, out STGMEDIUM medium)
         {
             medium = new STGMEDIUM();
+            var id = format.GetFormatId();
+            if (!TryGetData(id, out object val))
+            {
+                Marshal.ThrowExceptionForHR(unchecked((int)0x80040064));
+            }
+
+            var ptr = medium.unionmember;
+            if (id == FormatId.CF_HDROP && val is string[] files)
+            {
+                SaveHdropToHandle(ref ptr, files);
+                medium.unionmember = ptr;
+                return;
+            }
+
+            if (id == FormatId.CF_BITMAP && val is Bitmap bmp)
+            {
+                medium.unionmember = GetCompatibleBitmap(bmp).DangerousGetHandle();
+                return;
+            }
+
+
             if ((format.tymed & TYMED.TYMED_HGLOBAL) != 0)
             {
                 medium.tymed = TYMED.TYMED_HGLOBAL;
@@ -379,31 +400,21 @@ namespace ClipSharp
                 return;
             }
 
-            switch (val)
+            (val switch
             {
-                case string s:
-                    {
-                        if (id == FormatId.CF_TEXT || id == FormatId.Rtf || id == FormatId.CF_OEMTEXT ||
-                            id == FormatId.CommaSeparatedValue || id == FormatId.CFSTR_INETURLA)
-                            SaveStringToHandle(ref ptr, s, NativeStringType.Ansi).ThrowIfFailed();
-                        if (id == FormatId.Html || id == FormatId.Xaml)
-                            SaveStringToHandle(ref ptr, s, NativeStringType.Utf8).ThrowIfFailed();
-                        ;
-                        if (id == FormatId.CF_UNICODETEXT || id == FormatId.ApplicationTrust ||
-                            id == FormatId.CFSTR_INETURLW)
-                            SaveStringToHandle(ref ptr, s, NativeStringType.Unicode).ThrowIfFailed();
-                        break;
-                    }
-                case Memory<byte> m:
-                    SaveSpanToHandle(ref ptr, m.Span).ThrowIfFailed();
-                    break;
-                case byte[] b:
-                    SaveSpanToHandle(ref ptr, b.AsSpan()).ThrowIfFailed();
-                    break;
-                case Stream s:
-                    SaveStreamToHandle(ref ptr, s).ThrowIfFailed();
-                    break;
-            }
+                string s when (id == FormatId.CF_TEXT || id == FormatId.Rtf || id == FormatId.CF_OEMTEXT ||
+                               id == FormatId.CommaSeparatedValue || id == FormatId.CFSTR_INETURLA)
+                => SaveStringToHandle(ref ptr, s, NativeStringType.Ansi),
+                string s when id == FormatId.Html || id == FormatId.Xaml
+                => SaveStringToHandle(ref ptr, s, NativeStringType.Utf8),
+                string s when (id == FormatId.CF_UNICODETEXT || id == FormatId.ApplicationTrust ||
+                               id == FormatId.CFSTR_INETURLW)
+                => SaveStringToHandle(ref ptr, s, NativeStringType.Unicode),
+                Memory<byte> m => SaveSpanToHandle(ref ptr, m.Span),
+                byte[] b => SaveSpanToHandle(ref ptr, b.AsSpan()),
+                Stream s => SaveStreamToHandle(ref ptr, s),
+                _ => throw new ApplicationException()
+            }).ThrowIfFailed();
             medium.unionmember = ptr;
         }
 

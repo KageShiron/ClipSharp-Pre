@@ -1,5 +1,6 @@
 ﻿using ClipSharp;
 using System;
+using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
@@ -17,7 +18,7 @@ namespace ClipSharpTest
         {
             OleInitialize(IntPtr.Zero);
             var d = new DataObject();
-            d.SetData(FormatId.CF_UNICODETEXT,"hoge");
+            d.SetData(FormatId.CF_BITMAP, Image.FromFile(@"C:\Users\nagatsuki\Pictures\img008.jpg"));
             IDataObject x = d;
 
             Clipboard.OleSetClipboard(d);

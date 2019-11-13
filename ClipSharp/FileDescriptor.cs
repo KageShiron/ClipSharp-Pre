@@ -138,11 +138,7 @@ namespace ClipSharp
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private TResult? ValueOrNull<TResult>(FileDescriptorFlags flag, TResult value) where TResult : struct
-        {
-            if ((_fd.dwFlags & flag) == flag) return value;
-            else return null;
-        }
+        private TResult? ValueOrNull<TResult>(FileDescriptorFlags flag, TResult value) where TResult : struct => _fd.dwFlags.HasFlag(flag) ? value : (TResult?)null;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SetValue<T>(FileDescriptorFlags flag, ref T target, T? value) where T : unmanaged
