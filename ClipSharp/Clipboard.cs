@@ -12,6 +12,9 @@ namespace ClipSharp
         public static extern int OleGetClipboard(out IDataObject pDataObject);
 
 
+        [DllImport("ole32.dll")]
+        public static extern int OleSetClipboard(IDataObject pDataObject);
+
         private static bool IsCurrentDataObject(ComDataObject obj)
         {
             return OleIsCurrentClipboard(obj.DataObject) == 0;

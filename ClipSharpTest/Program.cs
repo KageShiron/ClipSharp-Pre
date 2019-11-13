@@ -2,6 +2,8 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using Vanara.PInvoke;
 using static Vanara.PInvoke.Shell32;
 
 namespace ClipSharpTest
@@ -14,13 +16,13 @@ namespace ClipSharpTest
         static void Main(string[] args)
         {
             OleInitialize(IntPtr.Zero);
-            var x = Clipboard.GetDataObject();
-            foreach (var item in x.GetFileContents())
-            {
-                Console.WriteLine(item.Key.FileName);
-                Console.WriteLine(new StreamReader( item.Value).ReadToEnd());
+            var d = new DataObject();
+            d.SetData(FormatId.CF_UNICODETEXT,"hoge");
+            IDataObject x = d;
 
-            }
+            Clipboard.OleSetClipboard(d);
+
+            Ole32.OleFlushClipboard();
         }
 
         static void Test(int size)

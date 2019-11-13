@@ -16,9 +16,9 @@ using IDataObject = System.Windows.Forms.IDataObject;
 
 namespace ClipSharp
 {
+    [ComVisible(true)]
     public class DataObject : IComDataObject, IDataObject
     {
-        private readonly IDataObject innerData;
         private readonly Dictionary<FormatId, object> store = new Dictionary<FormatId, object>();
 
         private const TYMED AcceptableTymed = TYMED.TYMED_ENHMF | TYMED.TYMED_HGLOBAL | TYMED.TYMED_ISTORAGE |
@@ -27,23 +27,9 @@ namespace ClipSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool IsAcceptableTymed(TYMED val) => (val & AcceptableTymed) != 0;
 
-        public DataObject(IDataObject data)
+        public DataObject( )
         {
-            innerData = data;
         }
-
-        public DataObject(IComDataObject data)
-        {
-            if (data is IDataObject dataObject)
-            {
-                innerData = dataObject;
-            }
-            else
-            {
-                innerData = new OleDataObject(data);
-            }
-        }
-
         public void SetData<T>(T data)
         {
             SetData(FormatId.FromDotNetName(typeof(T).FullName), data);
@@ -330,6 +316,47 @@ namespace ClipSharp
 
         }
 
+        [DllImport("gdi32.dll")]
+        public static extern HBITMAP CreateCompatibleBitmap(HDC hdc, int cx, int cy);
+
+        private HBITMAP GetCompatibleBitmap(Bitmap bm)
+        {
+            using var hDC = User32.GetDC(IntPtr.Zero);
+
+            // GDI+ returns a DIBSECTION based HBITMAP. The clipboard deals well
+            // only with bitmaps created using CreateCompatibleBitmap(). So, we
+            // convert the DIBSECTION into a compatible bitmap.
+            IntPtr hBitmap = bm.GetHbitmap();
+
+            // Create a compatible DC to render the source bitmap.
+            using var dcSrc = Gdi32.CreateCompatibleDC(hDC);
+            var srcOld = Gdi32.SelectObject(dcSrc, hBitmap);
+
+            // Create a compatible DC and a new compatible bitmap.
+            using var dcDest = Gdi32.CreateCompatibleDC(hDC);
+            var hBitmapNew = CreateCompatibleBitmap(hDC, bm.Size.Width, bm.Size.Height);
+
+            // Select the new bitmap into a compatible DC and render the blt the original bitmap.
+            var destOld = Gdi32.SelectObject(dcDest, hBitmapNew);
+            Gdi32.BitBlt(
+                dcDest,
+                0,
+                0,
+                bm.Size.Width,
+                bm.Size.Height,
+                dcSrc,
+                0,
+                0,
+                Gdi32.RasterOperationMode.SRCCOPY);
+
+            // Clear the source and destination compatible DCs.
+            Gdi32.SelectObject(dcSrc, srcOld);
+            Gdi32.SelectObject(dcDest, destOld);
+
+            return hBitmapNew;
+        }
+
+
         void IComDataObject.GetDataHere(ref FORMATETC format, ref STGMEDIUM medium)
         {
             var id = new FormatId(format.cfFormat);
@@ -348,7 +375,8 @@ namespace ClipSharp
 
             if (id == FormatId.CF_BITMAP && val is Bitmap bmp)
             {
-                //TODO:
+                medium.unionmember = GetCompatibleBitmap(bmp).DangerousGetHandle();
+                return;
             }
 
             switch (val)
@@ -357,13 +385,13 @@ namespace ClipSharp
                     {
                         if (id == FormatId.CF_TEXT || id == FormatId.Rtf || id == FormatId.CF_OEMTEXT ||
                             id == FormatId.CommaSeparatedValue || id == FormatId.CFSTR_INETURLA)
-                            SaveStringToHandle(ref ptr, s, NativeStringType.Unicode).ThrowIfFailed();
+                            SaveStringToHandle(ref ptr, s, NativeStringType.Ansi).ThrowIfFailed();
                         if (id == FormatId.Html || id == FormatId.Xaml)
                             SaveStringToHandle(ref ptr, s, NativeStringType.Utf8).ThrowIfFailed();
                         ;
                         if (id == FormatId.CF_UNICODETEXT || id == FormatId.ApplicationTrust ||
                             id == FormatId.CFSTR_INETURLW)
-                            SaveStringToHandle(ref ptr, s, NativeStringType.Ansi).ThrowIfFailed();
+                            SaveStringToHandle(ref ptr, s, NativeStringType.Unicode).ThrowIfFailed();
                         break;
                     }
                 case Memory<byte> m:
@@ -411,13 +439,15 @@ namespace ClipSharp
         }
     }
 
+    [ComVisible(true)]
     public class FormatEnumrator : IEnumFORMATETC
     {
         private IEnumerator<FormatId> data;
         private int current = 0;
         public FormatEnumrator(DataObject dataObject)
         {
-            this.data = dataObject.GetFormats().GetEnumerator();
+            var l = dataObject.GetFormats().ToList();
+            this.data = l.GetEnumerator();
         }
         public void Clone(out IEnumFORMATETC newEnum)
         {
@@ -440,7 +470,7 @@ namespace ClipSharp
             if (id == FormatId.CF_BITMAP) rgelt[0].tymed = TYMED.TYMED_GDI;
             else if (id == FormatId.CF_ENHMETAFILE) rgelt[0].tymed = TYMED.TYMED_ENHMF;
             else if (id == FormatId.CF_METAFILEPICT) rgelt[0].tymed = TYMED.TYMED_MFPICT;
-            else rgelt[0].tymed = TYMED.TYMED_GDI;
+            else rgelt[0].tymed = TYMED.TYMED_HGLOBAL;
             rgelt[0].dwAspect = DVASPECT.DVASPECT_CONTENT;
             rgelt[0].ptd = IntPtr.Zero;
             rgelt[0].lindex = -1;

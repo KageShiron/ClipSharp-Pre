@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 
@@ -227,6 +228,10 @@ namespace ClipSharp
                 };
             return cs;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static FormatId GetFormatId(in this FORMATETC f)
+            => new FormatId(f.cfFormat);
     }
 
     public enum NativeStringType
