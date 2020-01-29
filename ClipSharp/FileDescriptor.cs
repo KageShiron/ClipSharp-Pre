@@ -178,5 +178,10 @@ namespace ClipSharp
             else
                 return null;
         }
+
+        public override string ToString()
+        {
+            return FileName;
+        }
     }
 }

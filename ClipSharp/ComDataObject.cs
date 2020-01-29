@@ -40,24 +40,21 @@ namespace ClipSharp
             }
         }
 
+
         public HtmlFormat GetHtml()
         {
             return HtmlFormat.Parse(GetString(FormatId.Html));
         }
 
-        public string GetString(FormatId id, NativeStringType type)
+        public bool GetHtml( out HtmlFormat result)
         {
-            var f = DataObjectUtils.GetFormatEtc(id);
-            STGMEDIUM s = default;
-            try
+            if (GetDataPresent(FormatId.Html))
             {
-                DataObject.GetData(ref f, out s);
-                return s.GetString(type);
+                result = GetHtml();
+                return true;
             }
-            finally
-            {
-                s.Dispose();
-            }
+            result = null;
+            return false;
         }
 
         public string[] GetFileDropList()
@@ -73,6 +70,17 @@ namespace ClipSharp
             {
                 s.Dispose();
             }
+        }
+
+        public bool GetFileDropList( out string[] result)
+        {
+            if (GetDataPresent(FormatId.CF_HDROP))
+            {
+                result = GetFileDropList();
+                return true;
+            }
+            result = null;
+            return false;
         }
 
         public Image GetBitmap()
@@ -92,6 +100,17 @@ namespace ClipSharp
             {
                 s.Dispose();
             }
+        }
+        
+        public bool GetBitmap( out Image result)
+        {
+            if (GetDataPresent(FormatId.CF_BITMAP))
+            {
+                result = GetBitmap();
+                return true;
+            }
+            result = null;
+            return false;
         }
 
         public TResult ReadHGlobal<TResult>(FormatId id) where TResult : unmanaged
@@ -114,9 +133,30 @@ namespace ClipSharp
             return ReadHGlobal<DragDropEffects>(FormatId.CFSTR_PREFERREDDROPEFFECT);
         }
 
+        public bool GetDragDropEffects( out DragDropEffects result)
+        {
+            if (GetDataPresent(FormatId.CFSTR_PREFERREDDROPEFFECT))
+            {
+                result = GetDragDropEffects();
+                return true;
+            }
+            result = default;
+            return false;
+        }
+
         public CultureInfo GetCultureInfo()
         {
             return new CultureInfo(ReadHGlobal<int>(FormatId.CF_LOCALE));
+        }
+        public bool GetCultureInfo( out CultureInfo result)
+        {
+            if (GetDataPresent(FormatId.CF_LOCALE))
+            {
+                result = GetCultureInfo();
+                return true;
+            }
+            result = null;
+            return false;
         }
 
         public List<PIDL> GetPidl()
@@ -147,9 +187,30 @@ namespace ClipSharp
             }
         }
 
+        public bool GetPidl( out List<PIDL> result)
+        {
+            if (GetDataPresent(FormatId.CFSTR_SHELLIDLIST))
+            {
+                result = GetPidl();
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
         public Stream GetFileContent(int index)
         {
             return GetUnmanagedStream(FormatId.CFSTR_FILECONTENTS, index);
+        }
+        public bool GetFileContent( int index, out Stream result)
+        {
+            if (GetDataPresent(FormatId.CFSTR_FILECONTENTS))
+            {
+                result = GetFileContent(index);
+                return true;
+            }
+            result = null;
+            return false;
         }
 
         public Dictionary<FileDescriptor, Stream> GetFileContents()
@@ -160,6 +221,16 @@ namespace ClipSharp
             return s;
         }
 
+        public bool GetFileContents( out Dictionary<FileDescriptor, Stream> result)
+        {
+            if (GetDataPresent(FormatId.CFSTR_FILEDESCRIPTORW))
+            {
+                result = GetFileContents();
+                return true;
+            }
+            result = null;
+            return false;
+        }
         public Metafile GetMetafile()
         {
             var f = FormatId.CF_METAFILEPICT.FormatEtc;
@@ -177,6 +248,17 @@ namespace ClipSharp
                 stg.Dispose();
             }
         }
+        public bool GetMetafile( out Metafile result)
+        {
+            if (GetDataPresent(FormatId.CF_METAFILEPICT))
+            {
+                result = GetMetafile();
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
 
         public Metafile GetEnhancedMetafile()
         {
@@ -190,6 +272,34 @@ namespace ClipSharp
             finally
             {
                 stg.Dispose();
+            }
+        }
+
+        public bool GetEnhancedMetafile( out Metafile result)
+        {
+            if (GetDataPresent(FormatId.CF_ENHMETAFILE))
+            {
+                result = GetEnhancedMetafile();
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
+        #region GetString
+
+        public string GetString(FormatId id, NativeStringType type)
+        {
+            var f = DataObjectUtils.GetFormatEtc(id);
+            STGMEDIUM s = default;
+            try
+            {
+                DataObject.GetData(ref f, out s);
+                return s.GetString(type);
+            }
+            finally
+            {
+                s.Dispose();
             }
         }
 
@@ -210,6 +320,43 @@ namespace ClipSharp
             throw new ArgumentException(nameof(id));
         }
 
+
+        public bool GetString( out string result)
+        {
+            if (GetDataPresent(FormatId.CF_UNICODETEXT))
+            {
+                result = GetString();
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
+        public bool GetString(FormatId id, out string result)
+        {
+            if (GetDataPresent(id))
+            {
+                result = GetString(id);
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
+
+        public bool GetString(FormatId id , NativeStringType native, out string result)
+        {
+            if (GetDataPresent(id))
+            {
+                result = GetString(id,native);
+                return true;
+            }
+            result = null;
+            return false;
+        }
+#endregion GetSring
+
+
         public Stream GetUnmanagedStream(FormatId id, int lindex = -1)
         {
             var f = id.FormatEtc;
@@ -217,12 +364,33 @@ namespace ClipSharp
             DataObject.GetData(ref f, out var s);
             return s.GetUnmanagedStream(true);
         }
+        public bool GetUnmanagedStream(FormatId id, out Stream result, int lindex = -1)
+        {
+            if (GetDataPresent(id))
+            {
+                result = GetUnmanagedStream(id, lindex);
+                return true;
+            }
+            result = null;
+            return false;
+        }
 
         public FileDescriptor[] GetFileDescriptors()
         {
             var f = FormatId.CFSTR_FILEDESCRIPTORW.FormatEtc;
             DataObject.GetData(ref f, out var s);
             return s.InvokeHGlobal<byte, FileDescriptor[]>(FileDescriptor.FromFileGroupDescriptor);
+        }
+        public bool GetFileDescriptors( out FileDescriptor[] result)
+        {
+            var f = FormatId.CFSTR_FILEDESCRIPTORW;
+            if (this.GetDataPresent(f))
+            {
+                result = GetFileDescriptors();
+                return true;
+            }
+            result = null;
+            return false;
         }
 
         #region GetCanonicalFormatEtc
