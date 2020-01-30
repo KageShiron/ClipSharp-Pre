@@ -17,9 +17,9 @@ using IDataObject = System.Windows.Forms.IDataObject;
 namespace ClipSharp
 {
     [ComVisible(true)]
-    public class DataObject : IComDataObject, IDataObject
+    public class DataStore : IComDataObject, IDataObject
     {
-        private readonly Dictionary<FormatId, object> store = new Dictionary<FormatId, object>();
+        private readonly Dictionary<FormatId, Dictionary<int,object>> store = new Dictionary<FormatId, Dictionary<int, object>>();
 
         private const TYMED AcceptableTymed = TYMED.TYMED_ENHMF | TYMED.TYMED_HGLOBAL | TYMED.TYMED_ISTORAGE |
                                               TYMED.TYMED_MFPICT | TYMED.TYMED_GDI;
@@ -27,48 +27,83 @@ namespace ClipSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool IsAcceptableTymed(TYMED val) => (val & AcceptableTymed) != 0;
 
-        public DataObject()
+        public DataStore()
         {
         }
-        public void SetData<T>(T data)
+
+        public void SetData<T>(T data, int lindex = -1)
         {
             SetData(FormatId.FromDotNetName(typeof(T).FullName), data);
         }
 
-        public void SetData(FormatId id, object data)
+        public void SetData(FormatId id, object data , int lindex = -1)
         {
-            store[id] = data;
-        }
-
-        public object GetData(FormatId id)
-        {
-            return store.TryGetValue(id, out object value) ? value : throw new DirectoryNotFoundException();
-        }
-
-        public T GetData<T>()
-        {
-            return GetData<T>(FormatId.FromDotNetName(typeof(T).FullName));
-        }
-
-        public T GetData<T>(FormatId id)
-        {
-            return store.TryGetValue(id, out object value) ? (T)value : throw new DirectoryNotFoundException();
-        }
-
-        public bool GetDataPresent(FormatId id)
-        {
-            return store.ContainsKey(id);
-        }
-        public bool TryGetData<T>(FormatId id, out T data)
-        {
-            if (store.TryGetValue(id, out object value))
+            if(!store.TryGetValue(id,out var dic) || dic == null)
             {
-                if (value is T d)
-                {
-                    data = d;
-                    return true;
-                }
+                store[id] = new Dictionary<int, object>();
             }
+            store[id][lindex] = data;
+        }
+
+        public void SetString(string str, NativeStringType native = NativeStringType.Unicode)
+        {
+            switch (native)
+            {
+                case NativeStringType.Unicode:
+                    SetData(FormatId.CF_UNICODETEXT,str);
+                    break;
+                case NativeStringType.Ansi:
+                    SetData(FormatId.CF_TEXT,str);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        public void SetFileContents(Dictionary<FileDescriptor,Stream> contents)
+        {
+            SetData(FormatId.CFSTR_FILEDESCRIPTORW, FileDescriptor.CreateNativeFileDescriptors(contents.Keys ));
+
+            int i = 0;
+            foreach (var (des,st) in contents)
+            {
+                SetData(FormatId.CFSTR_FILECONTENTS, st, i++);
+            }
+        }
+
+
+        public object GetData(FormatId id,int lindex = -1)
+        {
+            if (store.TryGetValue(id, out var dict) && dict.TryGetValue(lindex, out var obj))
+                return obj;
+            throw new KeyNotFoundException();
+        }
+
+        public T GetData<T>(int lindex = -1)
+        {
+            return GetData<T>(FormatId.FromDotNetName(typeof(T).FullName), lindex);
+        }
+
+        public T GetData<T>(FormatId id, int lindex = -1)
+        {
+            if (store.TryGetValue(id, out var dict) && dict.TryGetValue(lindex, out var obj))
+                return (T)obj;
+            throw new KeyNotFoundException();
+        }
+
+        public bool GetDataPresent(FormatId id,int lindex = -1)
+        {
+            return store.ContainsKey(id) && (store[id]?.ContainsKey(lindex) ?? false);
+        }
+        public bool TryGetData<T>(FormatId id, out T data, int lindex = -1)
+        {
+            if (store.TryGetValue(id, out var dict))
+                if (dict.TryGetValue(lindex, out var obj))
+                    if (obj is T d)
+                    {
+                        data = d;
+                        return true;
+                    }
 
             data = default;
             return false;
@@ -138,7 +173,7 @@ namespace ClipSharp
         {
             medium = new STGMEDIUM();
             var id = format.GetFormatId();
-            if (!TryGetData(id, out object val))
+            if (!TryGetData(id, out object val,format.lindex))
             {
                 Marshal.ThrowExceptionForHR(unchecked((int)0x80040064));
             }
@@ -156,6 +191,7 @@ namespace ClipSharp
                 medium.unionmember = GetCompatibleBitmap(bmp).DangerousGetHandle();
                 return;
             }
+
 
 
             if ((format.tymed & TYMED.TYMED_HGLOBAL) != 0)
@@ -381,9 +417,10 @@ namespace ClipSharp
         void IComDataObject.GetDataHere(ref FORMATETC format, ref STGMEDIUM medium)
         {
             var id = new FormatId(format.cfFormat);
-            if (!TryGetData(id, out object val))
+            if (!TryGetData(id, out object val,format.lindex))
             {
-                Marshal.ThrowExceptionForHR(unchecked((int)0x80040064));
+                //Marshal.ThrowExceptionForHR(unchecked((int)0x80040064));
+                HRESULT.E_FAIL.ThrowIfFailed();
             }
 
             var ptr = medium.unionmember;
@@ -393,7 +430,7 @@ namespace ClipSharp
                 medium.unionmember = ptr;
                 return;
             }
-
+            
             if (id == FormatId.CF_BITMAP && val is Bitmap bmp)
             {
                 medium.unionmember = GetCompatibleBitmap(bmp).DangerousGetHandle();
@@ -455,7 +492,7 @@ namespace ClipSharp
     {
         private IEnumerator<FormatId> data;
         private int current = 0;
-        public FormatEnumrator(DataObject dataObject)
+        public FormatEnumrator(DataStore dataObject)
         {
             var l = dataObject.GetFormats().ToList();
             this.data = l.GetEnumerator();

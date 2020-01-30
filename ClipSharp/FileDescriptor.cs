@@ -1,5 +1,6 @@
 ﻿using ClipSharp.Native;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -26,6 +27,13 @@ namespace ClipSharp
             }
         }
 
+        public FileDescriptor(string fileName = "")
+        {
+            _fd = new FILEDESCRIPTOR();
+            this._FileName = "";
+            this.FileName = fileName;
+        }
+
         /// <summary>
         /// ネイティブのFILEDESCRIPTOR構造体
         /// </summary>
@@ -44,6 +52,26 @@ namespace ClipSharp
             var list = new FileDescriptor[len];
             for (var i = 0; i < len; i++) list[i] = new FileDescriptor(in fs[i]);
             return list;
+        }
+
+        public static byte[] CreateNativeFileDescriptors( ICollection<FileDescriptor> descriptors )
+        {
+            unsafe
+            {
+                uint count = (uint)descriptors.Count;
+                int size = sizeof(FILEDESCRIPTOR);
+                var buff = new byte[sizeof(uint) + size * count];
+                var sp = buff.AsSpan();
+                MemoryMarshal.Write(sp, ref count);
+                sp = sp.Slice(sizeof(uint));
+                foreach (var item in descriptors)
+                {
+                    var d = item.FileDesriptor;
+                    MemoryMarshal.Write(sp, ref d);
+                    sp = sp.Slice(Marshal.SizeOf(d));
+                }
+                return buff;
+            }
         }
 
         public Guid? Clsid
@@ -116,7 +144,7 @@ namespace ClipSharp
             }
         }
 
-        public string _FileName;
+        private string _FileName;
 
         public string FileName
         {

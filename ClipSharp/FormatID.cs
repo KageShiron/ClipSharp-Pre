@@ -243,7 +243,7 @@ namespace ClipSharp
             _ => NativeName == "" ? "Format" + Id : NativeName
         };
 
-        public FormatId(int id) => Id = id;
+        public FormatId(int id) => Id = id & 0xFFFF;
 
 
         public override bool Equals(object obj) => (obj is FormatId) ? Equals((FormatId)obj) : false;
