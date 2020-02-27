@@ -40,7 +40,12 @@ namespace ClipSharp
             return new FormatId(id);
         }
 
-        internal static FormatId FromNativeName(string nativeName)
+        /// <summary>
+        /// Create FormatId from name.
+        /// </summary>
+        /// <param name="nativeName"></param>
+        /// <returns></returns>
+        public static FormatId FromNativeName(string nativeName)
         {
             foreach (var (k, v) in _formats)
                 if (string.Compare(v.NativeName, nativeName, StringComparison.OrdinalIgnoreCase) == 0)
@@ -49,7 +54,12 @@ namespace ClipSharp
             return RegisterFormatId(nativeName);
         }
 
-        public static FormatId FromDotNetName(string name)
+        /// <summary>
+        /// Create FormatId from name. (compatible with .NET)
+        /// </summary>
+        /// <param name="name">format name</param>
+        /// <returns>FormatID</returns>
+        public static FormatId FromName(string name)
         {
             if (name.StartsWith("Format") && int.TryParse(name.Substring(6), out var num)) return new FormatId(num);
             return name switch

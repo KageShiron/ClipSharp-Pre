@@ -33,7 +33,7 @@ namespace ClipSharp
 
         public void SetData<T>(T data, int lindex = -1)
         {
-            SetData(FormatId.FromDotNetName(typeof(T).FullName), data);
+            SetData(FormatId.FromName(typeof(T).FullName), data);
         }
 
         public void SetData(FormatId id, object data , int lindex = -1)
@@ -81,7 +81,7 @@ namespace ClipSharp
 
         public T GetData<T>(int lindex = -1)
         {
-            return GetData<T>(FormatId.FromDotNetName(typeof(T).FullName), lindex);
+            return GetData<T>(FormatId.FromName(typeof(T).FullName), lindex);
         }
 
         public T GetData<T>(FormatId id, int lindex = -1)
@@ -113,13 +113,13 @@ namespace ClipSharp
 
 
         #region System.Windows.Forms.IComDataObject
-        object IDataObject.GetData(string format, bool autoConvert) => GetData<object>(FormatId.FromDotNetName("format"));
+        object IDataObject.GetData(string format, bool autoConvert) => GetData<object>(FormatId.FromName("format"));
 
-        object IDataObject.GetData(string format) => GetData<object>(FormatId.FromDotNetName(format));
+        object IDataObject.GetData(string format) => GetData<object>(FormatId.FromName(format));
 
-        object IDataObject.GetData(Type format) => GetData<object>(FormatId.FromDotNetName(format.FullName));
+        object IDataObject.GetData(Type format) => GetData<object>(FormatId.FromName(format.FullName));
 
-        void IDataObject.SetData(string format, bool autoConvert, object data) => SetData(FormatId.FromDotNetName(format), data);
+        void IDataObject.SetData(string format, bool autoConvert, object data) => SetData(FormatId.FromName(format), data);
 
         void IDataObject.SetData(string format, object data) => ((IDataObject)this).SetData(format, false, data);
 
@@ -128,7 +128,7 @@ namespace ClipSharp
         void IDataObject.SetData(object data) => ((IDataObject)this).SetData(data.GetType().FullName, false, data);
 
         bool IDataObject.GetDataPresent(string format, bool autoConvert) =>
-            GetDataPresent(FormatId.FromDotNetName(format));
+            GetDataPresent(FormatId.FromName(format));
 
         bool IDataObject.GetDataPresent(string format) => ((IDataObject)this).GetDataPresent(format, false);
 

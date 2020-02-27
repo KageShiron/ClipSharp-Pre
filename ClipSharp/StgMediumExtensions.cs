@@ -186,8 +186,10 @@ namespace ClipSharp
                 default:
                 {
                     using var s = GetUnmanagedStream(stg, true);
+                    s.Seek(0, SeekOrigin.Begin);
                     var m = new MemoryStream((int) s.Length);
                     s.CopyTo(m);
+                    m.Position = 0;
                     return m;
                 }
             }
