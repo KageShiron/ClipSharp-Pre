@@ -94,7 +94,7 @@ namespace ClipSharp
             ReleaseStgMedium(in stg);
         }
 
-        public delegate TResult ReadOnlySpanFunc<T, TResult>(ReadOnlySpan<T> span);
+        public delegate TResult ReadOnlySpanFunc<T, TResult>(IntPtr ptr, ReadOnlySpan<T> span);
 
         /// <summary>
         /// HGLOBALについてfuncに与えられた処理を実行し、戻り値を返します。
@@ -115,7 +115,7 @@ namespace ClipSharp
                 unsafe
                 {
                     var span = new ReadOnlySpan<TSpan>((void*) locked, size);
-                    return func(span);
+                    return func(locked, span);
                 }
             }
             finally

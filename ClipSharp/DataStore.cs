@@ -45,6 +45,11 @@ namespace ClipSharp
             store[id][lindex] = data;
         }
 
+        public void SetData(string formatName, object data, int lindex = -1)
+        {
+            SetData(FormatId.FromName(formatName),data,lindex);
+        }
+
         public void SetString(string str, NativeStringType native = NativeStringType.Unicode)
         {
             switch (native)
@@ -82,6 +87,12 @@ namespace ClipSharp
         public T GetData<T>(int lindex = -1)
         {
             return GetData<T>(FormatId.FromName(typeof(T).FullName), lindex);
+        }
+
+        public T GetData<T>(string formatName,int lindex = -1)
+        {
+            return GetData<T>(FormatId.FromName(formatName), lindex);
+
         }
 
         public T GetData<T>(FormatId id, int lindex = -1)

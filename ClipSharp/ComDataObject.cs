@@ -7,8 +7,8 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
-using static Vanara.PInvoke.Shell32;
 using System.Linq;
+using Vanara.PInvoke;
 
 namespace ClipSharp
 {
@@ -102,7 +102,147 @@ namespace ClipSharp
                 s.Dispose();
             }
         }
-        
+
+        private static Bitmap GetBitmapFromHBitmap(IntPtr nativeHBitmap)
+        {
+            Bitmap bmp = Bitmap.FromHbitmap(nativeHBitmap);
+            Console.WriteLine(bmp.PixelFormat);
+
+            if (Bitmap.GetPixelFormatSize(bmp.PixelFormat) < 32)
+                return bmp;
+
+            BitmapData bmpData;
+
+            if (IsAlphaBitmap(bmp, out bmpData))
+                return GetlAlphaBitmapFromBitmapData(bmpData);
+
+            return bmp;
+        }
+
+        private static Bitmap GetlAlphaBitmapFromBitmapData(BitmapData bmpData)
+        {
+            return new Bitmap(
+                bmpData.Width,
+                bmpData.Height,
+                bmpData.Stride,
+                PixelFormat.Format32bppArgb,
+                bmpData.Scan0);
+        }
+
+        private static bool IsAlphaBitmap(Bitmap bmp, out BitmapData bmpData)
+        {
+            Rectangle bmBounds = new Rectangle(0, 0, bmp.Width, bmp.Height);
+
+            bmpData = bmp.LockBits(bmBounds, ImageLockMode.ReadOnly, bmp.PixelFormat);
+
+            try
+            {
+                for (int y = 0; y <= bmpData.Height - 1; y++)
+                {
+                    for (int x = 0; x <= bmpData.Width - 1; x++)
+                    {
+                        Color pixelColor = Color.FromArgb(
+                            Marshal.ReadInt32(bmpData.Scan0, (bmpData.Stride * y) + (4 * x)));
+
+                        if (pixelColor.A > 0 & pixelColor.A < 255)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                bmp.UnlockBits(bmpData);
+            }
+
+            return false;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct BITMAPV5HEADER
+        {
+            public uint bV5Size;
+            public int bV5Width;
+            public int bV5Height;
+            public int bV5Planes;
+            public int bV5BitCount;
+            public uint bV5Compression;
+            public uint bV5SizeImage;
+            public int bV5XPelsPerMeter;
+            public int bV5YPelsPerMeter;
+            public uint bV5ClrUsed;
+            public uint bV5ClrImportant;
+            public uint bV5RedMask;
+            public uint bV5GreenMask;
+            public uint bV5BlueMask;
+            public uint bV5AlphaMask;
+            public uint bV5CSType;
+            public IntPtr bV5Endpoints;
+            public uint bV5GammaRed;
+            public uint bV5GammaGreen;
+            public uint bV5GammaBlue;
+            public uint bV5Intent;
+            public uint bV5ProfileData;
+            public uint bV5ProfileSize;
+            public uint bV5Reserved;
+        }
+
+
+        public Image GetBitmap3()
+        {
+            var f = FormatId.CF_BITMAP.FormatEtc;
+            STGMEDIUM s = default;
+            DataObject.GetData(ref f, out s);
+            var bmp = GetBitmapFromHBitmap(s.unionmember);
+            bmp.Save(@"d:\temp\y.bmp");
+
+            return null;
+        }
+
+        public Image GetBitmap2()
+        {
+            var f = FormatId.CF_DIB.FormatEtc;
+            STGMEDIUM s = default;
+            try
+            {
+                DataObject.GetData(ref f, out s);
+                Console.WriteLine(s.tymed);
+                if (s.tymed != TYMED.TYMED_HGLOBAL ) throw new ApplicationException("Invalid Tymed");
+                //Bitmap img = Bitmap.FromHbitmap(s.unionmember);
+                //var bmp = Gdi32.GetObject<Gdi32.BITMAP>((HBITMAP)s.unionmember);
+
+
+                //var img0 = new Bitmap(bmp.bmWidth, bmp.bmHeight, bmp.bmWidth * 4, PixelFormat.Format32bppArgb, bmp.bmBits);
+
+                unsafe
+                {
+                    s.InvokeHGlobal<Gdi32.BITMAPINFOHEADER, bool>((ptr, sp) =>
+                    {
+                        var bmp = sp[0];
+
+                        var img = new Bitmap(bmp.biWidth, bmp.biHeight,
+                           - (int) (bmp.biSizeImage / bmp.biHeight),
+                            PixelFormat.Format32bppArgb,
+                            (IntPtr) (ptr.ToInt64() + bmp.biSize + bmp.biSizeImage - (int)(bmp.biSizeImage / bmp.biHeight) ));
+                            //(IntPtr) (ptr.ToInt64() + bmp.biSize + bmp.biClrUsed * sizeof(Gdi32.RGBQUAD)));
+
+
+                        img.Save(@"d:\temp\x.bmp");
+                         return false;
+                    });
+
+                }
+
+                return null;
+            }
+            finally
+            {
+                s.Dispose();
+            }
+        }
+
+
         public bool GetBitmap( out Image result)
         {
             if (GetDataPresent(FormatId.CF_BITMAP))
@@ -160,7 +300,7 @@ namespace ClipSharp
             return false;
         }
 
-        public List<PIDL> GetCida()
+        public List<Shell32.PIDL> GetCida()
         {
             var f = FormatId.CFSTR_SHELLIDLIST.FormatEtc;
             STGMEDIUM s = default;
@@ -168,14 +308,14 @@ namespace ClipSharp
             {
                 DataObject.GetData(ref f, out s);
 
-                return s.InvokeHGlobal<uint, List<PIDL>>(x =>
+                return s.InvokeHGlobal<uint, List<Shell32.PIDL>>((_,x) =>
                 {
-                    var l = new List<PIDL>();
+                    var l = new List<Shell32.PIDL>();
                     unsafe
                     {
                         fixed (void* ptr = x)
                         {
-                            for (var i = 0; i < x[0] + 1; i++) l.Add(new PIDL((IntPtr) ((byte*) ptr + x[i + 1]), true));
+                            for (var i = 0; i < x[0] + 1; i++) l.Add(new Shell32.PIDL((IntPtr) ((byte*) ptr + x[i + 1]), true));
                         }
                     }
 
@@ -188,7 +328,7 @@ namespace ClipSharp
             }
         }
 
-        public bool GetCida( out List<PIDL> result)
+        public bool GetCida( out List<Shell32.PIDL> result)
         {
             if (GetDataPresent(FormatId.CFSTR_SHELLIDLIST))
             {
@@ -199,7 +339,7 @@ namespace ClipSharp
             return false;
         }
 
-        public (List<PIDL>,PIDL) GetShellIdList()
+        public (List<Shell32.PIDL>,Shell32.PIDL) GetShellIdList()
         {
             var f = FormatId.CFSTR_SHELLIDLIST.FormatEtc;
             STGMEDIUM s = default;
@@ -207,20 +347,20 @@ namespace ClipSharp
             {
                 DataObject.GetData(ref f, out s);
 
-                return s.InvokeHGlobal<uint, (List<PIDL>,PIDL)>(x =>
-                {
-                    var l = new List<PIDL>();
-                    PIDL? parent = null;
+                return s.InvokeHGlobal<uint, (List<Shell32.PIDL>, Shell32.PIDL)>((_, x) =>
+                 {
+                     var l = new List<Shell32.PIDL>();
+                    Shell32.PIDL? parent = null;
                     unsafe
                     {
                         fixed (void* ptr = x)
                         {
-                            parent = new PIDL((IntPtr)((byte*)ptr + x[1]), true, true);
+                            parent = new Shell32.PIDL((IntPtr)((byte*)ptr + x[1]), true, true);
                             for (var i = 1; i < x[0] + 1; i++)
                             {
                                 // DO NOT release memory of child
-                                var child = new PIDL((IntPtr)((byte*)ptr + x[i + 1]), false, false);
-                                var p = new PIDL(parent);
+                                var child = new Shell32.PIDL((IntPtr)((byte*)ptr + x[i + 1]), false, false);
+                                var p = new Shell32.PIDL(parent);
                                 p.Append(child);
                                 l.Add(p);
                             }
@@ -237,7 +377,7 @@ namespace ClipSharp
 
         }
 
-        public bool GetShellIdList( out List<PIDL>? result , out PIDL? parent )
+        public bool GetShellIdList( out List<Shell32.PIDL>? result , out Shell32.PIDL? parent )
         {
             if (GetDataPresent(FormatId.CFSTR_SHELLIDLIST))
             {
@@ -450,7 +590,7 @@ namespace ClipSharp
         {
             var f = FormatId.CFSTR_FILEDESCRIPTORW.FormatEtc;
             DataObject.GetData(ref f, out var s);
-            return s.InvokeHGlobal<byte, FileDescriptor[]>(FileDescriptor.FromFileGroupDescriptor);
+            return s.InvokeHGlobal<byte, FileDescriptor[]>( (_,f) => FileDescriptor.FromFileGroupDescriptor(f));
         }
         public bool GetFileDescriptors( out FileDescriptor[] result)
         {

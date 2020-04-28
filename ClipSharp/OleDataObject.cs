@@ -93,7 +93,7 @@ namespace ClipSharp
             {
                 DataObject.GetData(ref f, out s);
 
-                return s.InvokeHGlobal<uint, List<Shell32.PIDL>>(x =>
+                return s.InvokeHGlobal<uint, List<Shell32.PIDL>>((_, x) =>
                 {
                     var l = new List<Shell32.PIDL>();
                     unsafe
@@ -118,7 +118,7 @@ namespace ClipSharp
         {
             var f = FormatId.CFSTR_FILEDESCRIPTORW.FormatEtc;
             DataObject.GetData(ref f, out var s);
-            return s.InvokeHGlobal<byte, FileDescriptor[]>(FileDescriptor.FromFileGroupDescriptor);
+            return s.InvokeHGlobal<byte, FileDescriptor[]>((_, f) => FileDescriptor.FromFileGroupDescriptor(f));
         }
 
         public Stream GetFileContent(int index)
@@ -315,7 +315,7 @@ namespace ClipSharp
 
         public object GetData(string format, bool autoConvert)
         {
-            return GetData(FormatId.FromDotNetName(format));
+            return GetData(FormatId.FromName(format));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
