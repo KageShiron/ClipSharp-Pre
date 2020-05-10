@@ -6,6 +6,8 @@ using System.Runtime.InteropServices.ComTypes;
 
 namespace ClipSharp
 {
+    public delegate TResult ReadOnlySpanFunc<T, TResult>(IntPtr ptr, ReadOnlySpan<T> span);
+
     public static class StgMediumExtensions
     {
         #region P/Invoke
@@ -94,7 +96,6 @@ namespace ClipSharp
             ReleaseStgMedium(in stg);
         }
 
-        public delegate TResult ReadOnlySpanFunc<T, TResult>(IntPtr ptr, ReadOnlySpan<T> span);
 
         /// <summary>
         /// HGLOBALについてfuncに与えられた処理を実行し、戻り値を返します。
