@@ -19,7 +19,7 @@ namespace ClipSharp
     [ComVisible(true)]
     public class DataStore : IComDataObject, IDataObject
     {
-        private readonly Dictionary<FormatId, Dictionary<int,object>> store = new Dictionary<FormatId, Dictionary<int, object>>();
+        private readonly Dictionary<FormatId, Dictionary<int, object>> store = new Dictionary<FormatId, Dictionary<int, object>>();
 
         private const TYMED AcceptableTymed = TYMED.TYMED_ENHMF | TYMED.TYMED_HGLOBAL | TYMED.TYMED_ISTORAGE |
                                               TYMED.TYMED_MFPICT | TYMED.TYMED_GDI;
@@ -31,14 +31,14 @@ namespace ClipSharp
         {
         }
 
-        public void SetData<T>(T data, int lindex = -1)
+        public void SetData<T>(T data, int lindex = -1) where T : notnull
         {
             SetData(FormatId.FromName(typeof(T).FullName), data);
         }
 
-        public void SetData(FormatId id, object data , int lindex = -1)
+        public void SetData(FormatId id, object data, int lindex = -1)
         {
-            if(!store.TryGetValue(id,out var dic) || dic == null)
+            if (!store.TryGetValue(id, out var dic) || dic == null)
             {
                 store[id] = new Dictionary<int, object>();
             }
@@ -47,7 +47,7 @@ namespace ClipSharp
 
         public void SetData(string formatName, object data, int lindex = -1)
         {
-            SetData(FormatId.FromName(formatName),data,lindex);
+            SetData(FormatId.FromName(formatName), data, lindex);
         }
 
         public void SetString(string str, NativeStringType native = NativeStringType.Unicode)
@@ -55,29 +55,29 @@ namespace ClipSharp
             switch (native)
             {
                 case NativeStringType.Unicode:
-                    SetData(FormatId.CF_UNICODETEXT,str);
+                    SetData(FormatId.CF_UNICODETEXT, str);
                     break;
                 case NativeStringType.Ansi:
-                    SetData(FormatId.CF_TEXT,str);
+                    SetData(FormatId.CF_TEXT, str);
                     break;
                 default:
                     break;
             }
         }
 
-        public void SetFileContents(Dictionary<FileDescriptor,Stream> contents)
+        public void SetFileContents(Dictionary<FileDescriptor, Stream> contents)
         {
-            SetData(FormatId.CFSTR_FILEDESCRIPTORW, FileDescriptor.CreateNativeFileDescriptors(contents.Keys ));
+            SetData(FormatId.CFSTR_FILEDESCRIPTORW, FileDescriptor.CreateNativeFileDescriptors(contents.Keys));
 
             int i = 0;
-            foreach (var (des,st) in contents)
+            foreach (var (des, st) in contents)
             {
                 SetData(FormatId.CFSTR_FILECONTENTS, st, i++);
             }
         }
 
 
-        public object GetData(FormatId id,int lindex = -1)
+        public object GetData(FormatId id, int lindex = -1)
         {
             if (store.TryGetValue(id, out var dict) && dict.TryGetValue(lindex, out var obj))
                 return obj;
@@ -89,7 +89,7 @@ namespace ClipSharp
             return GetData<T>(FormatId.FromName(typeof(T).FullName), lindex);
         }
 
-        public T GetData<T>(string formatName,int lindex = -1)
+        public T GetData<T>(string formatName, int lindex = -1)
         {
             return GetData<T>(FormatId.FromName(formatName), lindex);
 
@@ -102,21 +102,21 @@ namespace ClipSharp
             throw new KeyNotFoundException();
         }
 
-        public bool GetDataPresent(FormatId id,int lindex = -1)
+        public bool GetDataPresent(FormatId id, int lindex = -1)
         {
             return store.ContainsKey(id) && (store[id]?.ContainsKey(lindex) ?? false);
         }
         public bool TryGetData<T>(FormatId id, out T data, int lindex = -1)
         {
-            if (store.TryGetValue(id, out var dict))
-                if (dict.TryGetValue(lindex, out var obj))
-                    if (obj is T d)
-                    {
-                        data = d;
-                        return true;
-                    }
+            if (store.TryGetValue(id, out var dict) && dict.TryGetValue(lindex, out var obj) && obj is T d)
+            {
+                data = d;
+                return true;
+            }
 
+#pragma warning disable CS8653 // 既定の式は、型パラメーターに null 値を導入します。
             data = default;
+#pragma warning restore CS8653 // 既定の式は、型パラメーターに null 値を導入します。
             return false;
         }
 
@@ -163,7 +163,7 @@ namespace ClipSharp
         int IComDataObject.EnumDAdvise(out IEnumSTATDATA? enumAdvise)
         {
             enumAdvise = null;
-            return unchecked((int)0x80040003); // unchecked((int)0x80040003),
+            return unchecked((int)0x80040003);
         }
 
         IEnumFORMATETC IComDataObject.EnumFormatEtc(DATADIR direction)
@@ -172,7 +172,7 @@ namespace ClipSharp
             {
                 return new FormatEnumrator(this);
             }
-            throw HRESULT.E_NOTIMPL.GetException();
+            throw HRESULT.E_NOTIMPL.GetException()!;
         }
 
         int IComDataObject.GetCanonicalFormatEtc(ref FORMATETC formatIn, out FORMATETC formatOut)
@@ -184,7 +184,7 @@ namespace ClipSharp
         {
             medium = new STGMEDIUM();
             var id = format.GetFormatId();
-            if (!TryGetData(id, out object val,format.lindex))
+            if (!TryGetData(id, out object val, format.lindex))
             {
                 Marshal.ThrowExceptionForHR(unchecked((int)0x80040064));
             }
@@ -428,7 +428,7 @@ namespace ClipSharp
         void IComDataObject.GetDataHere(ref FORMATETC format, ref STGMEDIUM medium)
         {
             var id = new FormatId(format.cfFormat);
-            if (!TryGetData(id, out object val,format.lindex))
+            if (!TryGetData(id, out object val, format.lindex))
             {
                 //Marshal.ThrowExceptionForHR(unchecked((int)0x80040064));
                 HRESULT.E_FAIL.ThrowIfFailed();
@@ -441,7 +441,7 @@ namespace ClipSharp
                 medium.unionmember = ptr;
                 return;
             }
-            
+
             if (id == FormatId.CF_BITMAP && val is Bitmap bmp)
             {
                 medium.unionmember = GetCompatibleBitmap(bmp).DangerousGetHandle();

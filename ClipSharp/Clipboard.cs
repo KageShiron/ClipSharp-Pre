@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
-using System.Text;
 using System.Threading;
 using Vanara.PInvoke;
 
@@ -24,11 +22,15 @@ namespace ClipSharp
         {
             if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
                 return GetDataObject();
-            ComDataObject obj = null;
-            var t = new Thread( () => { obj = GetDataObject(); });
+            ComDataObject? obj = null;
+            var t = new Thread(() => { obj = GetDataObject(); });
             t.SetApartmentState(ApartmentState.STA);
             t.Start();
-            if( t.Join(100))return obj;
+            if (t.Join(100))
+            {
+                if (obj == null) throw new ApplicationException("Can't GetDataObject");
+                return obj;
+            }
             throw new ApplicationException("Timeout");
         }
 
@@ -38,7 +40,7 @@ namespace ClipSharp
 
         public static void SetClipboard(IDataObject dataobject)
         {
-            if(! OleInitialize()) throw new ThreadStateException("OleInitialize was failed. (Is thread apartment STA?)");
+            if (!OleInitialize()) throw new ThreadStateException("OleInitialize was failed. (Is thread apartment STA?)");
             Ole32.OleSetClipboard(dataobject);
             Ole32.OleFlushClipboard();
         }
@@ -50,7 +52,7 @@ namespace ClipSharp
             var t = new Thread(() => { SetClipboard(dataObject); });
             t.SetApartmentState(ApartmentState.STA);
             t.Start();
-            if( !t.Join(100)) throw new ApplicationException("Timeout");
+            if (!t.Join(100)) throw new ApplicationException("Timeout");
         }
     }
 }
