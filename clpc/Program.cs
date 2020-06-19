@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ClipSharp;
 using Vanara;
+using static Vanara.PInvoke.Shell32;
 
 namespace clpc
 {
@@ -21,6 +22,7 @@ namespace clpc
         Png,
         Jpeg,
         Gif,
+        Pidl,
     }
 
     class Program
@@ -48,11 +50,14 @@ namespace clpc
             var stream = File.OpenRead(file);
             Span<byte> bytes = stackalloc byte[4096];
             stream.Read(bytes);
-            stream.Seek(0,SeekOrigin.Begin);
+
             var enc = EncodingUtils.DetectEncoding(bytes);
 
+            stream.Seek(0,SeekOrigin.Begin);
             using var sr = new StreamReader(stream);
-            d.SetString(sr.ReadToEnd());
+            var str = sr.ReadToEnd();
+            d.SetString(str);
+
             Clipboard.SetClipboard(d);
 
         }
@@ -85,7 +90,6 @@ namespace clpc
                 switch (t)
                 {
                     case DataType.Auto:
-                        break;
                     case DataType.Text:
                         SetText(file);
                         break;
@@ -100,6 +104,13 @@ namespace clpc
                         break;
                     case DataType.Gif:
                         SetImage(file,"GIF","image/gif");
+                        break;
+                    case DataType.Pidl:
+                        var d = new DataStore();
+                        var p = new PIDL( Path.GetFullPath(file));
+                        var p2 = new PIDL(@"D:\download\Untitled Diagram.svg");
+                        d.SetData(FormatId.CFSTR_SHELLIDLIST, new[] { p, p2 });
+                        Clipboard.SetClipboard(d);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(t), t, null);

@@ -9,6 +9,7 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using Vanara.Extensions;
 using Vanara.PInvoke;
+using static Vanara.PInvoke.Shell32;
 using IComDataObject = System.Runtime.InteropServices.ComTypes.IDataObject;
 using IDataObject = System.Windows.Forms.IDataObject;
 
@@ -384,6 +385,34 @@ namespace ClipSharp
 
         }
 
+        unsafe HRESULT SaveCidaToHandle(ref IntPtr handle, PIDL[] pidls, PIDL? parent = null)
+        {
+
+            if (parent == null)
+            {
+                SHGetKnownFolderIDList(KNOWNFOLDERID.FOLDERID_Desktop.Guid(), 0, HTOKEN.NULL, out parent);
+            }
+            int size = 4 + 4 + pidls.Length * 4; // cidl + aoffset[0] + aoffset(子ノード分)
+            Span<byte> span = stackalloc byte[size + ((int)parent.Size + (int)pidls.Sum(x => x.Size))];
+            Span<uint> uspan = MemoryMarshal.Cast<byte,uint>(span);
+            uspan[0] = (uint)pidls.Length;
+            uspan[1] = (uint)size;
+            uspan[2] = (uint)size + parent.Size;
+            unsafe
+            {
+                fixed (byte* ptr = span)
+                {
+                    Buffer.MemoryCopy((void*)parent.DangerousGetHandle(), ptr + size, parent.Size, parent.Size);
+                    for (int i = 0; i < pidls.Length; i++)
+                    {
+                        Buffer.MemoryCopy((void*)pidls[i].DangerousGetHandle(), ptr + uspan[2 + i], pidls[i].Size, pidls[i].Size);
+                        if (i != pidls.Length - 1) uspan[3 + i] = uspan[2 + i] + pidls[i].Size;
+                    }
+                }
+            }
+            return SaveSpanToHandle(ref handle, MemoryMarshal.AsBytes(span));
+        }
+
         [DllImport("gdi32.dll")]
         public static extern HBITMAP CreateCompatibleBitmap(HDC hdc, int cx, int cy);
 
@@ -438,6 +467,14 @@ namespace ClipSharp
             if (id == FormatId.CF_HDROP && val is string[] files)
             {
                 SaveHdropToHandle(ref ptr, files);
+                medium.unionmember = ptr;
+                return;
+            }
+
+            if (id == FormatId.CFSTR_SHELLIDLIST && val is PIDL[] pidls)
+            {
+
+                SaveCidaToHandle(ref ptr, pidls);
                 medium.unionmember = ptr;
                 return;
             }
