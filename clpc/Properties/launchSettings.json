@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "clpc": {
+      "commandName": "Project",
+      "commandLineArgs": "-t file Programs.cs"
+    }
+  }
+}

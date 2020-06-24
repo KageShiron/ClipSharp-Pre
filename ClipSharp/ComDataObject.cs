@@ -265,38 +265,6 @@ namespace ClipSharp
             return new CultureInfo(locale.Value);
         }
 
-        public List<Shell32.PIDL>? GetCida()
-        {
-            var f = FormatId.CFSTR_SHELLIDLIST.FormatEtc;
-            STGMEDIUM s = default;
-            try
-            {
-                if (!GetDataPresent(FormatId.CFSTR_SHELLIDLIST)) return null;
-                DataObject.GetData(ref f, out s);
-
-                return s.InvokeHGlobal<uint, List<Shell32.PIDL>>((p, x) =>
-                {
-                    var l = new List<Shell32.PIDL>();
-                    unsafe
-                    {
-                        byte* ptr = (byte*)p;
-                        for (var i = 0; i < x[0] + 1; i++) l.Add(new Shell32.PIDL((IntPtr)(ptr + x[i + 1]), true));
-                    }
-
-                    return l;
-                });
-            }
-            catch (Exception e)
-            {
-                Logger.LogInformation(e, nameof(GetCida));
-            }
-            finally
-            {
-                s.Dispose();
-            }
-            return null;
-        }
-
         public (List<Shell32.PIDL>, Shell32.PIDL)? GetShellIdList()
         {
             var f = FormatId.CFSTR_SHELLIDLIST.FormatEtc;
@@ -320,7 +288,7 @@ namespace ClipSharp
                              var child = new Shell32.PIDL((IntPtr)(ptr + x[i + 1]), false, false);
                              var pa = new Shell32.PIDL(parent);
                              pa.Append(child);
-                             l.Add(p);
+                             l.Add(pa);
                          }
                      }
 

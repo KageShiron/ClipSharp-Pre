@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using ClipSharp;
 using Vanara;
 using static Vanara.PInvoke.Shell32;
+using System.Collections.Generic;
 
 namespace clpc
 {
@@ -23,6 +24,7 @@ namespace clpc
         Jpeg,
         Gif,
         Pidl,
+        File
     }
 
     class Program
@@ -31,15 +33,15 @@ namespace clpc
         public static void Main(string[] args)
         {
             var root = new RootCommand();
-            var arg = new Argument<string>("file", () => null);
+            var arg = new Argument<string[]>("files", () => null);
             root.AddArgument(arg);
             root.AddOption(new Option<DataType>("-t", () => DataType.Auto));
-            root.Handler = CommandHandler.Create<DataType,string>(Entry);
+            root.Handler = CommandHandler.Create<DataType,string[]>(Entry);
             var res = root.Parse(args);
             var t = res.ValueForOption<DataType>("t");
             var tokens = res.FindResultFor(arg).Tokens;
-            string file = tokens.FirstOrDefault()?.Value;
-            Entry(t, file);
+            IEnumerable<string> files = tokens.Select(x => x.Value);
+            Entry(t, files);
         }
 
 
@@ -77,9 +79,10 @@ namespace clpc
         }
 
 
-        public static void Entry( DataType t = DataType.Auto,  string file = null)
+        public static void Entry( DataType t = DataType.Auto,  IEnumerable<string> fileList = null)
         {
-            if (file == null)
+            var files = fileList.ToArray();
+            if (files == null)
             {
                 var d = new DataStore();
                 d.SetString(Console.In.ReadToEnd());
@@ -91,27 +94,34 @@ namespace clpc
                 {
                     case DataType.Auto:
                     case DataType.Text:
-                        SetText(file);
+                        SetText(files[0]);
                         break;
                     case DataType.Image:
-                        SetImage(file);
+                        SetImage(files[0]);
                         break;
                     case DataType.Png:
-                        SetImage(file, "PNG", "image/png");
+                        SetImage(files[0], "PNG", "image/png");
                         break;
                     case DataType.Jpeg:
-                        SetImage(file, "JFIF", "image/jpeg");
+                        SetImage(files[0], "JFIF", "image/jpeg");
                         break;
                     case DataType.Gif:
-                        SetImage(file,"GIF","image/gif");
+                        SetImage(files[0],"GIF","image/gif");
                         break;
+                    case DataType.File:
+                        {
+                            var d = new DataStore();
+                            d.SetFileDropList(files);
+                            Clipboard.SetClipboard(d);
+                            break;
+                        }
                     case DataType.Pidl:
-                        var d = new DataStore();
-                        var p = new PIDL( Path.GetFullPath(file));
-                        var p2 = new PIDL(@"D:\download\Untitled Diagram.svg");
-                        d.SetData(FormatId.CFSTR_SHELLIDLIST, new[] { p, p2 });
-                        Clipboard.SetClipboard(d);
-                        break;
+                        {
+                            var d = new DataStore();
+                            d.SetPidl(files);
+                            Clipboard.SetClipboard(d);
+                            break;
+                        }
                     default:
                         throw new ArgumentOutOfRangeException(nameof(t), t, null);
                 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -46,9 +47,31 @@ namespace ClipSharp
             store[id][lindex] = data;
         }
 
-        public void SetData(string formatName, object data, int lindex = -1)
+        public void SetData(string formatName, object data, int lindex = -1) => SetData(FormatId.FromName(formatName), data, lindex);
+
+        public void SetFileDropList( IReadOnlyList<string> files) => SetData(FormatId.CF_HDROP, files);
+        public void SetFileDropList(params string[] files) => SetFileDropList((IReadOnlyList<string>)files);
+        public void SetPidl(IReadOnlyList<PIDL> pidl) => SetData(FormatId.CFSTR_SHELLIDLIST, pidl);
+        public void SetPidl(params PIDL[] pidl) => SetPidl((IReadOnlyList<PIDL>)pidl);
+        public void SetPidl(IReadOnlyList<string> paths)
         {
-            SetData(FormatId.FromName(formatName), data, lindex);
+            var array = new PIDL[paths.Count];
+            for (int i = 0; i < array.Length; i++)
+            {
+                var pidl = new PIDL( Path.GetFullPath(paths[i]));
+                if (pidl.IsInvalid) throw new ApplicationException(paths[i]);
+                array[i] = pidl;
+            }
+            SetPidl(array);
+        }
+        public void SetPidl(params string[] paths) => SetPidl((IReadOnlyList<string>)paths);
+        public void SetImage(Image img)
+        {
+            switch (img)
+            {
+                case Bitmap bmp: SetData(FormatId.CF_BITMAP, bmp); break;
+                case Metafile meta: SetData(FormatId.CF_ENHMETAFILE, meta); break;
+            }
         }
 
         public void SetString(string str, NativeStringType native = NativeStringType.Unicode)
@@ -191,7 +214,7 @@ namespace ClipSharp
             }
 
             var ptr = medium.unionmember;
-            if (id == FormatId.CF_HDROP && val is string[] files)
+            if (id == FormatId.CF_HDROP && val is IReadOnlyList<string> files)
             {
                 SaveHdropToHandle(ref ptr, files);
                 medium.unionmember = ptr;
@@ -326,35 +349,94 @@ namespace ClipSharp
             return HRESULT.S_OK;
         }
 
-        unsafe HRESULT SaveHdropToHandle(ref IntPtr handle, string[] files)
+
+        /// <summary>
+        /// <para>Defines the CF_HDROP clipboard format. The data that follows is a double null-terminated list of file names.</para>
+        /// </summary>
+        // https://docs.microsoft.com/en-us/windows/desktop/api/shlobj_core/ns-shlobj_core-_dropfiles typedef struct _DROPFILES { DWORD
+        // pFiles; POINT pt; BOOL fNC; BOOL fWide; } DROPFILES, *LPDROPFILES;
+        [PInvokeData("shlobj_core.h", MSDNShortId = "e1f80529-2151-4ff6-95e0-afff67f2f117")]
+        [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Auto)]
+        public struct DROPFILES
         {
-            int size = sizeof(Shell32.DROPFILES);
-            foreach (var f in files)
+            /// <summary>
+            /// <para>Type: <c>DWORD</c></para>
+            /// <para>The offset of the file list from the beginning of this structure, in bytes.</para>
+            /// </summary>
+            [FieldOffset(0)]
+            public uint pFiles;
+
+            /// <summary>
+            /// <para>Type: <c>POINT</c></para>
+            /// <para>The drop point. The coordinates depend on <c>fNC</c>.</para>
+            /// </summary>
+            [FieldOffset(4)]
+            public System.Drawing.Point pt;
+
+            /// <summary>
+            /// <para>Type: <c>BOOL</c></para>
+            /// <para>
+            /// A nonclient area flag. If this member is <c>TRUE</c>, <c>pt</c> specifies the screen coordinates of a point in a window's
+            /// nonclient area. If it is <c>FALSE</c>, <c>pt</c> specifies the client coordinates of a point in the client area.
+            /// </para>
+            /// </summary>
+            [MarshalAs(UnmanagedType.Bool)]
+            [FieldOffset(12)]
+            public bool fNC;
+
+            /// <summary>
+            /// <para>Type: <c>BOOL</c></para>
+            /// <para>
+            /// A value that indicates whether the file contains ANSI or Unicode characters. If the value is zero, the file contains ANSI
+            /// characters. Otherwise, it contains Unicode characters.
+            /// </para>
+            /// </summary>
+            [FieldOffset(16)]
+            [MarshalAs(UnmanagedType.Bool)]
+            public bool fWide;
+        }
+        unsafe HRESULT SaveHdropToHandle(ref IntPtr handle, IReadOnlyList<string> files)
+        {
+            
+            uint DFSize = (uint)Marshal.SizeOf(typeof(Shell32.DROPFILES));
+            uint size = DFSize;
+
+            Console.WriteLine(size);
+            string[] fulls = new string[files.Count];
+            for (int i = 0; i < files.Count; i++)
             {
-                size += (f.Length + 1) * 2;
+                fulls[i] = Path.GetFullPath(files[i]);
+                size += ((uint)fulls[i].Length + 1) * 2;
             }
 
             size += 2; // Terminal null
 
-            var hg = Kernel32.GlobalReAlloc(handle, size, Kernel32.GMEM.GMEM_MOVEABLE);
+            var hg = handle == IntPtr.Zero ? Kernel32.GlobalAlloc(Kernel32.GMEM.GMEM_MOVEABLE, size) : Kernel32.GlobalReAlloc(handle, size, Kernel32.GMEM.GMEM_MOVEABLE);
             if (hg.IsNull) return HRESULT.E_OUTOFMEMORY;
+            handle = hg.DangerousGetHandle();
 
             var lc = Kernel32.GlobalLock(hg);
-            Shell32.DROPFILES* df = (Shell32.DROPFILES*)lc.ToPointer();
-            df->pFiles = (uint)files.Length;
+            DROPFILES* df = (DROPFILES*)lc.ToPointer();
+            *df = default;
+            df->pFiles = DFSize;
+            df->pt = default;
             df->fNC = false;
             df->fWide = false;
 
-            char* ptr = ((char*)df) + sizeof(Shell32.DROPFILES);
-            foreach (var f in files)
+
+            Console.WriteLine((IntPtr)(&df->fNC));
+            Console.WriteLine((IntPtr)(&df->fWide));
+
+            byte* ptr = ((byte*)df) + DFSize;
+            foreach (var f in fulls)
             {
                 fixed (char* str = f)
                 {
-                    Buffer.MemoryCopy(str, ptr, f.Length + 2, f.Length + 2);
-                    ptr[f.Length] = '\0';
-                    ptr += f.Length + 1;
+                    Buffer.MemoryCopy(str, ptr, f.Length * 2 + 2, f.Length * 2 + 2);
+                    ((char*)ptr)[f.Length] = '\0';
+                    ptr += f.Length * 2 + 2;
                 }
-                *ptr = '\0';
+                *((char*)ptr) = '\0';
             }
             Kernel32.GlobalUnlock(hg);
             return HRESULT.S_OK;
@@ -385,17 +467,21 @@ namespace ClipSharp
 
         }
 
-        unsafe HRESULT SaveCidaToHandle(ref IntPtr handle, PIDL[] pidls, PIDL? parent = null)
+        unsafe HRESULT SaveCidaToHandle(ref IntPtr handle, IReadOnlyList<PIDL> pidls, PIDL? parent = null)
         {
+            foreach (var item in pidls)
+            {
+                Console.WriteLine(item);
 
+            }
             if (parent == null)
             {
                 SHGetKnownFolderIDList(KNOWNFOLDERID.FOLDERID_Desktop.Guid(), 0, HTOKEN.NULL, out parent);
             }
-            int size = 4 + 4 + pidls.Length * 4; // cidl + aoffset[0] + aoffset(子ノード分)
+            int size = 4 + 4 + pidls.Count * 4; // cidl + aoffset[0] + aoffset(子ノード分)
             Span<byte> span = stackalloc byte[size + ((int)parent.Size + (int)pidls.Sum(x => x.Size))];
             Span<uint> uspan = MemoryMarshal.Cast<byte,uint>(span);
-            uspan[0] = (uint)pidls.Length;
+            uspan[0] = (uint)pidls.Count;
             uspan[1] = (uint)size;
             uspan[2] = (uint)size + parent.Size;
             unsafe
@@ -403,10 +489,10 @@ namespace ClipSharp
                 fixed (byte* ptr = span)
                 {
                     Buffer.MemoryCopy((void*)parent.DangerousGetHandle(), ptr + size, parent.Size, parent.Size);
-                    for (int i = 0; i < pidls.Length; i++)
+                    for (int i = 0; i < pidls.Count; i++)
                     {
                         Buffer.MemoryCopy((void*)pidls[i].DangerousGetHandle(), ptr + uspan[2 + i], pidls[i].Size, pidls[i].Size);
-                        if (i != pidls.Length - 1) uspan[3 + i] = uspan[2 + i] + pidls[i].Size;
+                        if (i != pidls.Count - 1) uspan[3 + i] = uspan[2 + i] + pidls[i].Size;
                     }
                 }
             }
@@ -471,9 +557,8 @@ namespace ClipSharp
                 return;
             }
 
-            if (id == FormatId.CFSTR_SHELLIDLIST && val is PIDL[] pidls)
+            if (id == FormatId.CFSTR_SHELLIDLIST && val is IReadOnlyList<PIDL> pidls)
             {
-
                 SaveCidaToHandle(ref ptr, pidls);
                 medium.unionmember = ptr;
                 return;
