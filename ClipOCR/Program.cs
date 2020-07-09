@@ -10,15 +10,14 @@ namespace ClipOcr
 {
     class Program
     {
-        [STAThread]
-        static void Main(string[] args)
+        static async void Main(string[] args)
         {
             foreach (var item in OcrEngine.AvailableRecognizerLanguages)
             {
                 Console.WriteLine(item);
             }
 
-           var clip = ClipSharp.Clipboard.GetDataObjectSta();
+           var clip = await ClipSharp.Clipboard.GetDataObject();
             var png = clip.GetStream(FormatId.FromName("PNG"));
             if (png == null) return;
             var result = test(png);
@@ -26,7 +25,7 @@ namespace ClipOcr
             var d = new DataStore();
             Console.WriteLine(result.Result);
             d.SetString(result.Result);
-            ClipSharp.Clipboard.SetClipboard(d);
+            await ClipSharp.Clipboard.SetClipboard(d);
         }
         static async Task<string> test(Stream png)
         {

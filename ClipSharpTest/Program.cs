@@ -16,10 +16,9 @@ namespace ClipSharpTest
     class Program
     {
 
-        [STAThread()]
-        static void Main(string[] args)
+        static async void Main(string[] args)
         {
-            var c = Clipboard.GetDataObject();
+            var c = await Clipboard.GetDataObject();
            
             c.GetBitmap(BitmapMode.Normal).Save("d:\\temp\\normal.png");
             c.GetBitmap(BitmapMode.Bitmap).Save("d:\\temp\\bitmap.png");
@@ -36,8 +35,7 @@ namespace ClipSharpTest
             d.SetData(FormatId.CF_TEXT, "hoge");
             IDataObject x = d;
 
-            Clipboard.SetClipboard(d);
-            Ole32.OleFlushClipboard();
+            await Clipboard.SetClipboard(d);
 
             Console.WriteLine();
         }
