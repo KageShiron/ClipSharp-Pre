@@ -35,7 +35,11 @@ namespace ClipSharp
         }
 
 
-        internal static bool OleInitialize() => Ole32.OleInitialize(IntPtr.Zero) == Vanara.PInvoke.HRESULT.S_OK;
+        internal static bool OleInitialize()
+        {
+            var r = Ole32.OleInitialize(IntPtr.Zero);
+            return r == Vanara.PInvoke.HRESULT.S_OK || r == Vanara.PInvoke.HRESULT.S_FALSE;
+        }
 
 
         public static void SetClipboard(IDataObject dataobject)

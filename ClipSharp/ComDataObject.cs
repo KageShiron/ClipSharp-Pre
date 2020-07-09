@@ -46,7 +46,7 @@ namespace ClipSharp
         {
             try
             {
-                if (GetDataPresent(FormatId.Html) && GetString(FormatId.Html) is string s) return HtmlFormat.Parse(s);
+                if (!GetDataPresent(FormatId.Html) && GetString(FormatId.Html) is string s) return HtmlFormat.Parse(s);
             }
             catch (Exception e)
             {
@@ -61,7 +61,7 @@ namespace ClipSharp
             STGMEDIUM s = default;
             try
             {
-                if (GetDataPresent(FormatId.CF_HDROP))
+                if (!GetDataPresent(FormatId.CF_HDROP))
                 {
                     DataObject.GetData(ref f, out s);
                     return s.GetFiles();
@@ -241,7 +241,7 @@ namespace ClipSharp
             STGMEDIUM s = default;
             try
             {
-                if (this.GetDataPresent(id)) return null;
+                if (!GetDataPresent(id)) return null;
                 DataObject.GetData(ref f, out s);
                 return s.ReadHGlobal<TResult>();
             }
@@ -312,7 +312,7 @@ namespace ClipSharp
         {
             try
             {
-                if (GetDataPresent(FormatId.CFSTR_FILECONTENTS))
+                if (!GetDataPresent(FormatId.CFSTR_FILECONTENTS))
                 {
                     return GetStream(FormatId.CFSTR_FILECONTENTS, index);
                 }
@@ -365,7 +365,7 @@ namespace ClipSharp
 
         public Metafile? GetEnhancedMetafile()
         {
-            if (GetDataPresent(FormatId.CF_ENHMETAFILE)) return null;
+            if (!GetDataPresent(FormatId.CF_ENHMETAFILE)) return null;
             var f = FormatId.CF_ENHMETAFILE.FormatEtc;
             DataObject.GetData(ref f, out var stg);
             try
@@ -437,7 +437,7 @@ namespace ClipSharp
             STGMEDIUM s = default;
             try
             {
-                if (this.GetDataPresent(id)) return null;
+                if (!GetDataPresent(id)) return null;
                 var f = id.FormatEtc;
                 f.lindex = lindex;
                 DataObject.GetData(ref f, out s);
@@ -460,7 +460,7 @@ namespace ClipSharp
             STGMEDIUM s = default;
             try
             {
-                if (this.GetDataPresent(FormatId.CFSTR_FILEDESCRIPTORW)) return null;
+                if (!GetDataPresent(FormatId.CFSTR_FILEDESCRIPTORW)) return null;
                 DataObject.GetData(ref f, out s);
                 return s.InvokeHGlobal<byte, FileDescriptor[]>((_, f) => FileDescriptor.FromFileGroupDescriptor(f));
             }
