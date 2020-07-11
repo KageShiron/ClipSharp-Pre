@@ -112,9 +112,9 @@ namespace ClipSharp
             var locked = GlobalLock(stg.unionmember);
             try
             {
-                var size = (int) GlobalSize(locked).ToUInt32();
                 unsafe
                 {
+                    var size = (int)GlobalSize(locked).ToUInt32() / Marshal.SizeOf<TSpan>();
                     var span = new ReadOnlySpan<TSpan>((void*) locked, size);
                     return func(locked, span);
                 }

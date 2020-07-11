@@ -5,39 +5,56 @@ using Windows.Storage.Streams;
 using System.IO;
 using System.Threading.Tasks;
 using ClipSharp;
+using System.CommandLine;
+using Windows.Globalization;
+using System.CommandLine.Invocation;
+using System.Net;
+using Windows.Media.Capture;
+using Windows.UI.Xaml;
 
 namespace ClipOcr
 {
     class Program
     {
-        static async void Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            foreach (var item in OcrEngine.AvailableRecognizerLanguages)
-            {
-                Console.WriteLine(item);
-            }
-
-           var clip = await ClipSharp.Clipboard.GetDataObject();
-            var png = clip.GetStream(FormatId.FromName("PNG"));
-            if (png == null) return;
-            var result = test(png);
-            result.Wait();
-            var d = new DataStore();
-            Console.WriteLine(result.Result);
-            d.SetString(result.Result);
-            await ClipSharp.Clipboard.SetClipboard(d);
+            RootCommand root = new RootCommand();
+            Option lang = new Option<string>(new string[] { "--lang", "-l" }, () => "system", "");
+            Option strip = new Option<bool>(new string[] { "--strip", "-s" }, () => false,"");
+            root.AddOption(lang);
+            root.AddOption(strip);
+            root.Handler = CommandHandler.Create<string,bool>(Handler);
+            await root.InvokeAsync(args);
         }
-        static async Task<string> test(Stream png)
+
+        static async Task Handler(string lang,bool strip)
         {
-            var en = new Windows.Globalization.Language("en");
-            var engine = OcrEngine.TryCreateFromLanguage(en);
-            using (var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream())
+            var engine = lang == "system" ? OcrEngine.TryCreateFromUserProfileLanguages() : OcrEngine.TryCreateFromLanguage(new Language(lang));
+            var clip = await ClipSharp.Clipboard.GetDataObject();
+            var png = clip.GetStream(FormatId.FromName("PNG"));
+            if (png == null) Exit("Clipboard has no valid image.");
             {
                 Windows.Graphics.Imaging.BitmapDecoder decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(png.AsRandomAccessStream());
                 SoftwareBitmap softwareBitmap = await decoder.GetSoftwareBitmapAsync();
                 var result = await engine.RecognizeAsync(softwareBitmap);
-                return (result.Text);
+                if (string.IsNullOrWhiteSpace(result.Text))
+                {
+                    Exit("No character was detected");
+                }
+                var d = new DataStore();
+                var txt = result.Text;
+                if (strip) txt = txt.Replace(" ", "");
+                Console.WriteLine(txt);
+                d.SetString(txt);
+                await ClipSharp.Clipboard.SetClipboard(d);
             }
         }
+
+        static void Exit(string text)
+        {
+            Console.Error.WriteLine(text);
+            Environment.Exit(1);
+        }
+
     }
 }
