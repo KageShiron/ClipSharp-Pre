@@ -29,34 +29,34 @@ namespace ClipSharp
         }
 
 
-        public static FORMATETC GetFormatEtc(short id, int lindex = -1, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
+        public static FORMATETC GetFormatEtc(short id, int lindex = -1, TYMED? tymed = null , DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
         {
             return new FORMATETC
             {
                 cfFormat = id,
                 dwAspect = dwAspect,
                 lindex = lindex,
-                tymed = TYMED.TYMED_HGLOBAL | TYMED.TYMED_GDI | TYMED.TYMED_ISTREAM | TYMED.TYMED_ISTORAGE |
-                        TYMED.TYMED_GDI | TYMED.TYMED_FILE | TYMED.TYMED_MFPICT | TYMED.TYMED_ENHMF
+                tymed = tymed ?? ((CLIPFORMAT)id) switch
+                {
+                    CLIPFORMAT.CF_BITMAP => TYMED.TYMED_GDI,
+                    CLIPFORMAT.CF_METAFILEPICT => TYMED.TYMED_MFPICT,
+                    CLIPFORMAT.CF_ENHMETAFILE => TYMED.TYMED_ENHMF,
+                    _ => TYMED.TYMED_HGLOBAL // | TYMED.TYMED_ISTREAM | TYMED.TYMED_ISTORAGE // | TYMED.TYMED_FILE
+                }
             };
         }
 
-        public static FORMATETC GetFormatEtc(string dataFormat, int lindex = -1,
-            DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
-        {
-            return GetFormatEtc((short) GetFormatId(dataFormat), lindex, dwAspect);
-        }
+        public static FORMATETC GetFormatEtc(string dataFormat, int lindex = -1, TYMED? tymed = null, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
+        => GetFormatEtc((short) GetFormatId(dataFormat), lindex, tymed, dwAspect);
+        
 
-        public static FORMATETC GetFormatEtc(int id, int lindex = -1, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
-        {
-            return GetFormatEtc((short) id, lindex, dwAspect);
-        }
+        public static FORMATETC GetFormatEtc(int id, int lindex = -1, TYMED? tymed = null, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
+        => GetFormatEtc((short) id, lindex, tymed, dwAspect);
+        
 
-        public static FORMATETC GetFormatEtc(FormatId id, int lindex = -1,
-            DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
-        {
-            return GetFormatEtc((short) id.Id, lindex, dwAspect);
-        }
+        public static FORMATETC GetFormatEtc(FormatId id, int lindex = -1, TYMED? tymed = null, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
+        => GetFormatEtc((short) id.Id, lindex, tymed, dwAspect);
+        
     }
 
 

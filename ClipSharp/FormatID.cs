@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using static Vanara.PInvoke.Shell32;
 
 namespace ClipSharp
 {
@@ -61,7 +62,7 @@ namespace ClipSharp
         /// <returns>FormatID</returns>
         public static FormatId FromName(string name)
         {
-            if (name.StartsWith("Format") && int.TryParse(name.Substring(6), out var num)) return new FormatId(num);
+            if (name.StartsWith("Format") && int.TryParse(name[6..], out var num)) return new FormatId(num);
             return name switch
             {
                 "Text" => new FormatId((int)CLIPFORMAT.CF_TEXT),
@@ -96,119 +97,49 @@ namespace ClipSharp
             var fmts = Enum.GetValues(typeof(CLIPFORMAT));
             foreach (CLIPFORMAT c in fmts) _formats.TryAdd((int)c, new InternalFormatID("", c.ToString()));
 
-            var id = GetFormatIdInternal("Shell IDList Array");
-            CFSTR_SHELLIDLIST = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("Shell IDList Array", "CFSTR_SHELLIDLIST"));
-            id = GetFormatIdInternal("Shell Object Offsets");
-            CFSTR_SHELLIDLISTOFFSET = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("Shell Object Offsets", "CFSTR_SHELLIDLISTOFFSET"));
-            id = GetFormatIdInternal("Net Resource");
-            CFSTR_NETRESOURCES = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("Net Resource", "CFSTR_NETRESOURCES"));
-            id = GetFormatIdInternal("FileGroupDescriptor");
-            CFSTR_FILEDESCRIPTORA = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("FileGroupDescriptor", "CFSTR_FILEDESCRIPTORA"));
-            id = GetFormatIdInternal("FileGroupDescriptorW");
-            CFSTR_FILEDESCRIPTORW = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("FileGroupDescriptorW", "CFSTR_FILEDESCRIPTORW"));
-            id = GetFormatIdInternal("FileContents");
-            CFSTR_FILECONTENTS = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("FileContents", "CFSTR_FILECONTENTS"));
-            id = GetFormatIdInternal("FileNameW");
-            CFSTR_FILENAMEW = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("FileNameW", "CFSTR_FILENAMEW"));
-            id = GetFormatIdInternal("PrinterFriendlyName");
-            CFSTR_PRINTERGROUP = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("PrinterFriendlyName", "CFSTR_PRINTERGROUP"));
-            id = GetFormatIdInternal("FileNameMap");
-            CFSTR_FILENAMEMAPA = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("FileNameMap", "CFSTR_FILENAMEMAPA"));
-            id = GetFormatIdInternal("FileNameMapW");
-            CFSTR_FILENAMEMAPW = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("FileNameMapW", "CFSTR_FILENAMEMAPW"));
-            id = GetFormatIdInternal("UniformResourceLocator");
-            CFSTR_SHELLURL = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("UniformResourceLocator", "CFSTR_SHELLURL"));
-            id = GetFormatIdInternal("UniformResourceLocator");
-            CFSTR_INETURLA = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("UniformResourceLocator", "CFSTR_INETURLA"));
-            id = GetFormatIdInternal("UniformResourceLocatorW");
-            CFSTR_INETURLW = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("UniformResourceLocatorW", "CFSTR_INETURLW"));
-            id = GetFormatIdInternal("Preferred DropEffect");
-            CFSTR_PREFERREDDROPEFFECT = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("Preferred DropEffect", "CFSTR_PREFERREDDROPEFFECT"));
-            id = GetFormatIdInternal("Performed DropEffect");
-            CFSTR_PERFORMEDDROPEFFECT = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("Performed DropEffect", "CFSTR_PERFORMEDDROPEFFECT"));
-            id = GetFormatIdInternal("Paste Succeeded");
-            CFSTR_PASTESUCCEEDED = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("Paste Succeeded", "CFSTR_PASTESUCCEEDED"));
-            id = GetFormatIdInternal("InShellDragLoop");
-            CFSTR_INDRAGLOOP = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("InShellDragLoop", "CFSTR_INDRAGLOOP"));
-            id = GetFormatIdInternal("MountedVolume");
-            CFSTR_MOUNTEDVOLUME = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("MountedVolume", "CFSTR_MOUNTEDVOLUME"));
-            id = GetFormatIdInternal("PersistedDataObject");
-            CFSTR_PERSISTEDDATAOBJECT = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("PersistedDataObject", "CFSTR_PERSISTEDDATAOBJECT"));
-            id = GetFormatIdInternal("TargetCLSID");
-            CFSTR_TARGETCLSID = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("TargetCLSID", "CFSTR_TARGETCLSID"));
-            id = GetFormatIdInternal("Logical Performed DropEffect");
-            CFSTR_LOGICALPERFORMEDDROPEFFECT = new FormatId(id);
-            _formats.TryAdd(id,
-                new InternalFormatID("Logical Performed DropEffect", "CFSTR_LOGICALPERFORMEDDROPEFFECT"));
-            id = GetFormatIdInternal("Autoplay Enumerated IDList Array");
-            CFSTR_AUTOPLAY_SHELLIDLISTS = new FormatId(id);
-            _formats.TryAdd(id,
-                new InternalFormatID("Autoplay Enumerated IDList Array", "CFSTR_AUTOPLAY_SHELLIDLISTS"));
-            id = GetFormatIdInternal("UntrustedDragDrop");
-            CFSTR_UNTRUSTEDDRAGDROP = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("UntrustedDragDrop", "CFSTR_UNTRUSTEDDRAGDROP"));
-            id = GetFormatIdInternal("File Attributes Array");
-            CFSTR_FILE_ATTRIBUTES_ARRAY = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("File Attributes Array", "CFSTR_FILE_ATTRIBUTES_ARRAY"));
-            id = GetFormatIdInternal("InvokeCommand DropParam");
-            CFSTR_INVOKECOMMAND_DROPPARAM = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("InvokeCommand DropParam", "CFSTR_INVOKECOMMAND_DROPPARAM"));
-            id = GetFormatIdInternal("DropHandlerCLSID");
-            CFSTR_SHELLDROPHANDLER = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("DropHandlerCLSID", "CFSTR_SHELLDROPHANDLER"));
-            id = GetFormatIdInternal("DropDescription");
-            CFSTR_DROPDESCRIPTION = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("DropDescription", "CFSTR_DROPDESCRIPTION"));
-            id = GetFormatIdInternal("ZoneIdentifier");
-            CFSTR_ZONEIDENTIFIER = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("ZoneIdentifier", "CFSTR_ZONEIDENTIFIER"));
-            id = GetFormatIdInternal("Xaml");
-            Xaml = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("Xaml", ""));
+            CFSTR_SHELLIDLIST = AddFormat("Shell IDList Array", "CFSTR_SHELLIDLIST");
+            CFSTR_SHELLIDLISTOFFSET = AddFormat("Shell Object Offsets", "CFSTR_SHELLIDLISTOFFSET");
+            CFSTR_NETRESOURCES = AddFormat("Net Resource", "CFSTR_NETRESOURCES");
+            CFSTR_FILEDESCRIPTORA = AddFormat("FileGroupDescriptor", "CFSTR_FILEDESCRIPTORA");
+            CFSTR_FILEDESCRIPTORW = AddFormat("FileGroupDescriptorW", "CFSTR_FILEDESCRIPTORW");
+            CFSTR_FILECONTENTS = AddFormat("FileContents", "CFSTR_FILECONTENTS");
+            CFSTR_FILENAMEW = AddFormat("FileName", "CFSTR_FILENAME");
+            CFSTR_FILENAMEW = AddFormat("FileNameW", "CFSTR_FILENAMEW");
+            CFSTR_PRINTERGROUP = AddFormat("PrinterFriendlyName", "CFSTR_PRINTERGROUP");
+            CFSTR_FILENAMEMAPA = AddFormat("FileNameMap", "CFSTR_FILENAMEMAPA");
+            CFSTR_FILENAMEMAPW = AddFormat("FileNameMapW", "CFSTR_FILENAMEMAPW");
+            CFSTR_SHELLURL = AddFormat("UniformResourceLocator", "CFSTR_SHELLURL");
+            CFSTR_INETURLA = AddFormat("UniformResourceLocator", "CFSTR_INETURLA");
+            CFSTR_INETURLW = AddFormat("UniformResourceLocatorW", "CFSTR_INETURLW");
+            CFSTR_PREFERREDDROPEFFECT = AddFormat("Preferred DropEffect", "CFSTR_PREFERREDDROPEFFECT",typeof(DragDropEffects));
+            CFSTR_PASTESUCCEEDED = AddFormat("Paste Succeeded", "CFSTR_PASTESUCCEEDED");
+            CFSTR_INDRAGLOOP = AddFormat("InShellDragLoop", "CFSTR_INDRAGLOOP");
+            CFSTR_MOUNTEDVOLUME = AddFormat("MountedVolume", "CFSTR_MOUNTEDVOLUME");
+            CFSTR_PERSISTEDDATAOBJECT = AddFormat("PersistedDataObject", "CFSTR_PERSISTEDDATAOBJECT");
+            CFSTR_TARGETCLSID = AddFormat("TargetCLSID", "CFSTR_TARGETCLSID");
+            CFSTR_LOGICALPERFORMEDDROPEFFECT = AddFormat("Logical Performed DropEffect", "CFSTR_LOGICALPERFORMEDDROPEFFECT");
+            CFSTR_AUTOPLAY_SHELLIDLISTS = AddFormat("Autoplay Enumerated IDList Array", "CFSTR_AUTOPLAY_SHELLIDLISTS");
+            CFSTR_UNTRUSTEDDRAGDROP = AddFormat("UntrustedDragDrop", "CFSTR_UNTRUSTEDDRAGDROP");
+            CFSTR_FILE_ATTRIBUTES_ARRAY = AddFormat("File Attributes Array", "CFSTR_FILE_ATTRIBUTES_ARRAY");
+            CFSTR_INVOKECOMMAND_DROPPARAM = AddFormat("InvokeCommand DropParam", "CFSTR_INVOKECOMMAND_DROPPARAM");
+            CFSTR_SHELLDROPHANDLER = AddFormat("DropHandlerCLSID", "CFSTR_SHELLDROPHANDLER");
+            CFSTR_DROPDESCRIPTION = AddFormat("DropDescription", "CFSTR_DROPDESCRIPTION",typeof(DROPDESCRIPTION));
+            CFSTR_ZONEIDENTIFIER = AddFormat("ZoneIdentifier", "CFSTR_ZONEIDENTIFIER");
+            Xaml = AddFormat("Xaml", "");
+            XamlPackage = AddFormat("XamlPackage", "");
+            ApplicationTrust = AddFormat("ApplicationTrust", "");
+            Html = AddFormat("HTML Format", "");
+            Rtf = AddFormat("Rich Text Format", "");
+            CommaSeparatedValue = AddFormat("CSV", "");
+            Serializable = AddFormat("PersistentObject", "");
+            AddFormat("FileOpFlags","",typeof(FILEOP_FLAGS));
+        }
 
-            id = GetFormatIdInternal("XamlPackage");
-            XamlPackage = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("XamlPackage", ""));
-
-            id = GetFormatIdInternal("ApplicationTrust");
-            ApplicationTrust = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("ApplicationTrust", ""));
-
-            id = GetFormatIdInternal("HTML Format");
-            Html = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("HTML Format", ""));
-
-            id = GetFormatIdInternal("Rich Text Format");
-            Rtf = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("XamlPackage", ""));
-
-            id = GetFormatIdInternal("CSV");
-            CommaSeparatedValue = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("CSV", ""));
-
-            id = GetFormatIdInternal("PersistentObject");
-            Serializable = new FormatId(id);
-            _formats.TryAdd(id, new InternalFormatID("PersistentObject", ""));
+        private static FormatId AddFormat(string nativeName,string constantName,Type enumType = null)
+        {
+            var id = GetFormatIdInternal(nativeName);
+            _formats.TryAdd(id, new InternalFormatID(nativeName, constantName,enumType));
+            return new FormatId(id);
         }
 
         private static readonly ConcurrentDictionary<int, InternalFormatID> _formats =
@@ -230,7 +161,9 @@ namespace ClipSharp
         public int Id { get; }
         public string NativeName => GetFormatInformation(Id).NativeName;
         public string ConstantName => GetFormatInformation(Id).ConstantName;
-        public FORMATETC FormatEtc => DataObjectUtils.GetFormatEtc(this);
+        public Type EnumType => GetFormatInformation(Id).Enum;
+        public FORMATETC GetFormatEtc(int lindex = -1, TYMED? tymed = null, DVASPECT dwAspect = DVASPECT.DVASPECT_CONTENT)
+            => DataObjectUtils.GetFormatEtc(this,lindex,tymed,dwAspect);
 
         public string DotNetName => (CLIPFORMAT)Id switch
         {
@@ -336,7 +269,15 @@ namespace ClipSharp
             ConstantName = constantName;
         }
 
+        public InternalFormatID(string nativeName, string constantName, Type enumType)
+        {
+            NativeName = nativeName;
+            ConstantName = constantName;
+            Enum = enumType;
+        }
+
         public string NativeName { get; set; }
         public string ConstantName { get; set; }
+        public Type? Enum { get; set; }
     }
 }

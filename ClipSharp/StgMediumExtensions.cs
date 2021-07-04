@@ -108,7 +108,7 @@ namespace ClipSharp
         public static TResult InvokeHGlobal<TSpan, TResult>(this in STGMEDIUM stg,
             ReadOnlySpanFunc<TSpan, TResult> func)
         {
-            if (stg.tymed != TYMED.TYMED_HGLOBAL) throw new ArgumentException(nameof(stg));
+            if (stg.tymed != TYMED.TYMED_HGLOBAL && stg.tymed != TYMED.TYMED_MFPICT) throw new ArgumentException(nameof(stg));
             var locked = GlobalLock(stg.unionmember);
             try
             {

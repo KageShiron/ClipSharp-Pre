@@ -50,6 +50,7 @@ namespace ClipSharp
 
         public void SetData(string formatName, object data, int lindex = -1) => SetData(FormatId.FromName(formatName), data, lindex);
 
+
         public void SetFileDropList(IReadOnlyList<string> files) => SetData(FormatId.CF_HDROP, files);
         public void SetFileDropList(params string[] files) => SetFileDropList((IReadOnlyList<string>)files);
         public void SetPidl(IReadOnlyList<PIDL> pidl) => SetData(FormatId.CFSTR_SHELLIDLIST, pidl);
@@ -566,7 +567,6 @@ namespace ClipSharp
         }
         public void Clone(out IEnumFORMATETC newEnum)
         {
-
             throw new NotImplementedException();
         }
 
@@ -579,7 +579,7 @@ namespace ClipSharp
             }
 
 
-            var id = data.Current.FormatEtc.GetFormatId();
+            var id = data.Current.GetFormatEtc().GetFormatId();
             rgelt[0].cfFormat = (short)id.Id;
 
             if (id == FormatId.CF_BITMAP) rgelt[0].tymed = TYMED.TYMED_GDI;
